@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Haven - Your Mental Wellness Companion</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Space+Mono:wght@400;700&family=DM+Serif+Display&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --warm-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            --calm-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            --sunset-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+            --night-gradient: linear-gradient(135deg, #2d3561 0%, #c05c7e 100%);
+            
+            --text-primary: #2d3748;
+            --text-secondary: #718096;
+            --bg-soft: #faf9f7;
+            --bg-card: rgba(255, 255, 255, 0.9);
+            --accent-purple: #9f7aea;
+            --accent-pink: #ed64a6;
+            --accent-blue: #4299e1;
+            
+            --font-display: 'DM Serif Display', serif;
+            --font-body: 'Outfit', sans-serif;
+            --font-mono: 'Space Mono', monospace;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-soft);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Animated Background */
+        .animated-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            overflow: hidden;
+        }
+
+        .floating-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.4;
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: #667eea;
+            top: -100px;
+            left: -100px;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 350px;
+            height: 350px;
+            background: #f093fb;
+            bottom: -50px;
+            right: -50px;
+            animation-delay: 5s;
+        }
+
+        .orb-3 {
+            width: 300px;
+            height: 300px;
+            background: #4facfe;
+            top: 50%;
+            left: 50%;
+            animation-delay: 10s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(30px, -30px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+        }
+
+        /* Screen System */
+        .screen {
+            display: none;
+            animation: fadeIn 0.8s ease;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Landing Screen */
+        .landing {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .hero-content {
+            max-width: 600px;
+            padding: 40px;
+        }
+
+        .logo {
+            font-family: var(--font-display);
+            font-size: 72px;
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 20px;
+            animation: glow 3s ease-in-out infinite;
+        }
+
+        @keyframes glow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .tagline {
+            font-size: 24px;
+            color: var(--text-secondary);
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        .cta-button {
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            padding: 18px 48px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: var(--font-body);
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Chat Screen */
+        .chat-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .chat-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .chat-header h2 {
+            font-family: var(--font-display);
+            font-size: 36px;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+
+        .chat-header p {
+            color: var(--text-secondary);
+            font-size: 18px;
+        }
+
+        .messages {
+            max-height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 24px;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 20px;
+        }
+
+        .bot-avatar {
+            background: var(--primary-gradient);
+        }
+
+        .user-avatar {
+            background: var(--warm-gradient);
+        }
+
+        .message-content {
+            background: var(--bg-card);
+            padding: 16px 20px;
+            border-radius: 20px;
+            max-width: 70%;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            padding: 8px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-purple);
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.7; }
+            30% { transform: translateY(-10px); opacity: 1; }
+        }
+
+        .input-area {
+            display: flex;
+            gap: 12px;
+            padding: 20px;
+            background: var(--bg-card);
+            border-radius: 25px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        .chat-input {
+            flex: 1;
+            border: none;
+            padding: 14px 20px;
+            font-size: 16px;
+            font-family: var(--font-body);
+            background: transparent;
+            outline: none;
+            color: var(--text-primary);
+        }
+
+        .send-button {
+            background: var(--primary-gradient);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .send-button:hover {
+            transform: scale(1.1);
+        }
+
+        /* Game Screen - Bubble Popper */
+        .game-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .game-header {
+            margin-bottom: 60px;
+        }
+
+        .game-header h2 {
+            font-family: var(--font-display);
+            font-size: 42px;
+            margin-bottom: 15px;
+        }
+
+        .game-header p {
+            font-size: 20px;
+            color: var(--text-secondary);
+        }
+
+        .bubble-arena {
+            position: relative;
+            height: 500px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(240, 147, 251, 0.05));
+            border-radius: 30px;
+            overflow: hidden;
+            margin-bottom: 40px;
+        }
+
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            animation: bubbleFloat 4s infinite ease-in-out;
+            backdrop-filter: blur(5px);
+            color: white;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .bubble:hover {
+            transform: scale(1.1);
+        }
+
+        .bubble.popping {
+            animation: pop 0.5s ease forwards;
+        }
+
+        @keyframes bubbleFloat {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        /* Mood Slider Game */
+        .mood-slider-container {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        .landscape {
+            height: 300px;
+            border-radius: 20px;
+            overflow: hidden;
+            margin-bottom: 40px;
+            position: relative;
+            transition: all 1s ease;
+        }
+
+        .landscape-sky {
+            height: 70%;
+            transition: background 1s ease;
+        }
+
+        .landscape-ground {
+            height: 30%;
+            background: linear-gradient(to bottom, #8b7355, #6b5d4f);
+        }
+
+        .weather-elements {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        .sun, .cloud, .rain {
+            position: absolute;
+            transition: opacity 0.5s ease;
+        }
+
+        .sun {
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, #ffd700, #ff8c00);
+            border-radius: 50%;
+            top: 30px;
+            right: 50px;
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.6);
+        }
+
+        .mood-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: linear-gradient(to right, #667eea, #4facfe, #fee140);
+            outline: none;
+            margin: 30px 0;
+        }
+
+        .mood-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .mood-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Insight Card */
+        .insight-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        .insight-card {
+            background: white;
+            border-radius: 30px;
+            padding: 50px 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .insight-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: var(--primary-gradient);
+        }
+
+        .archetype-badge {
+            display: inline-block;
+            padding: 12px 24px;
+            background: var(--primary-gradient);
+            color: white;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 30px;
+        }
+
+        .insight-title {
+            font-family: var(--font-display);
+            font-size: 32px;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+        }
+
+        .insight-description {
+            font-size: 18px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-bottom: 40px;
+        }
+
+        /* Group Matching */
+        .matching-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 80px 20px;
+            text-align: center;
+        }
+
+        .connection-animation {
+            margin: 60px 0;
+        }
+
+        .dots-container {
+            display: flex;
+            justify-content: center;
+            gap: 60px;
+            position: relative;
+            margin: 40px 0;
+        }
+
+        .connection-dot {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--primary-gradient);
+            animation: pulse 2s infinite;
+            position: relative;
+        }
+
+        .connection-dot::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: inherit;
+            animation: ripple 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes ripple {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        .group-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin: 30px 0;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            text-align: left;
+        }
+
+        .group-name {
+            font-family: var(--font-display);
+            font-size: 28px;
+            margin-bottom: 15px;
+        }
+
+        .group-description {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+
+        .group-stats {
+            display: flex;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Scheduling */
+        .schedule-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .calendar-slots {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 30px 0;
+        }
+
+        .time-slot {
+            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .time-slot:hover {
+            border-color: var(--accent-purple);
+            transform: translateY(-2px);
+        }
+
+        .time-slot.selected {
+            background: var(--primary-gradient);
+            color: white;
+        }
+
+        /* Therapist Dashboard */
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .dashboard-header {
+            margin-bottom: 40px;
+        }
+
+        .dashboard-header h1 {
+            font-family: var(--font-display);
+            font-size: 42px;
+            margin-bottom: 10px;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .dashboard-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .mood-heatmap {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .heatmap-cell {
+            aspect-ratio: 1;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: white;
+        }
+
+        .participant-list {
+            list-style: none;
+        }
+
+        .participant-item {
+            padding: 15px;
+            background: var(--bg-soft);
+            border-radius: 12px;
+            margin-bottom: 12px;
+        }
+
+        .participant-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .participant-trigger {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Utility Classes */
+        .btn-secondary {
+            background: white;
+            color: var(--accent-purple);
+            border: 2px solid var(--accent-purple);
+            padding: 14px 32px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-family: var(--font-body);
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: var(--accent-purple);
+            color: white;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--primary-gradient);
+            transition: width 0.5s ease;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .logo { font-size: 48px; }
+            .tagline { font-size: 18px; }
+            .message-content { max-width: 85%; }
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="animated-bg">
+        <div class="floating-orb orb-1"></div>
+        <div class="floating-orb orb-2"></div>
+        <div class="floating-orb orb-3"></div>
+    </div>
+
+    <!-- Landing Screen -->
+    <div class="screen active" id="landing">
+        <div class="landing">
+            <div class="hero-content">
+                <h1 class="logo">Haven</h1>
+                <p class="tagline">A warm space for your mind to rest</p>
+                <button class="cta-button" onclick="startJourney()">Begin Your Journey</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Screen -->
+    <div class="screen" id="chat">
+        <div class="chat-container">
+            <div class="chat-header">
+                <h2>Let's Talk</h2>
+                <p>share what's on your mind, no pressure</p>
+            </div>
+            <div class="messages" id="messages">
+                <div class="message bot">
+                    <div class="message-avatar bot-avatar">🌙</div>
+                    <div class="message-content">
+                        <p>hey there. the world can be a lot sometimes. how are you holding up today?</p>
+                    </div>
+                </div>
+            </div>
+            <div class="input-area">
+                <input type="text" class="chat-input" id="chatInput" placeholder="type anything..." onkeypress="handleEnter(event)">
+                <button class="send-button" onclick="sendMessage()">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="chatProgress" style="width: 20%"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bubble Popper Game -->
+    <div class="screen" id="bubbleGame">
+        <div class="game-container">
+            <div class="game-header">
+                <h2>What's Weighing on You?</h2>
+                <p>tap the bubbles that feel heavy right now</p>
+            </div>
+            <div class="bubble-arena" id="bubbleArena"></div>
+            <button class="cta-button" onclick="finishBubbleGame()">Continue</button>
+        </div>
+    </div>
+
+    <!-- Mood Slider Game -->
+    <div class="screen" id="moodGame">
+        <div class="mood-slider-container">
+            <div class="game-header">
+                <h2>The Weather Inside</h2>
+                <p>show me what the weather looks like inside your head right now</p>
+            </div>
+            <div class="landscape" id="landscape">
+                <div class="landscape-sky" id="landscapeSky"></div>
+                <div class="landscape-ground"></div>
+                <div class="weather-elements" id="weatherElements">
+                    <div class="sun" id="sun"></div>
+                </div>
+            </div>
+            <input type="range" min="0" max="100" value="50" class="mood-slider" id="moodSlider">
+            <div class="mood-labels">
+                <span>Stormy</span>
+                <span>Cloudy</span>
+                <span>Sunny</span>
+            </div>
+            <br><br>
+            <button class="cta-button" onclick="finishMoodGame()">Continue</button>
+        </div>
+    </div>
+
+    <!-- Insight Card -->
+    <div class="screen" id="insight">
+        <div class="insight-container">
+            <div class="insight-card">
+                <span class="archetype-badge">The Navigator</span>
+                <h2 class="insight-title">You're carrying the weight of everyone's expectations</h2>
+                <p class="insight-description">
+                    You're a guardian type—protective, driven, but tired. You set incredibly high standards for yourself, 
+                    and right now, it feels like you're constantly proving your worth. That's exhausting.
+                </p>
+                <p class="insight-description">
+                    The good news? You're not alone in this. There are others who understand exactly what you're going through.
+                </p>
+                <button class="cta-button" onclick="showMatching()">Find My People</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group Matching -->
+    <div class="screen" id="matching">
+        <div class="matching-container">
+            <h2 style="font-family: var(--font-display); font-size: 42px; margin-bottom: 20px;">
+                Finding Your Tribe
+            </h2>
+            <p style="font-size: 20px; color: var(--text-secondary); margin-bottom: 40px;">
+                connecting you with people who get it...
+            </p>
+            
+            <div class="connection-animation">
+                <div class="dots-container">
+                    <div class="connection-dot"></div>
+                    <div class="connection-dot"></div>
+                    <div class="connection-dot"></div>
+                </div>
+            </div>
+
+            <div class="group-card">
+                <h3 class="group-name">The Navigators</h3>
+                <p class="group-description">
+                    A supportive space for high-achievers dealing with career stress, imposter syndrome, 
+                    and the pressure of constant performance. You all understand what it's like to feel 
+                    like you're never quite enough.
+                </p>
+                <div class="group-stats">
+                    <div class="stat">
+                        <span>👥</span>
+                        <span>6-8 members</span>
+                    </div>
+                    <div class="stat">
+                        <span>📅</span>
+                        <span>Weekly sessions</span>
+                    </div>
+                    <div class="stat">
+                        <span>⏰</span>
+                        <span>60 minutes</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="cta-button" onclick="showScheduling()">Join This Group</button>
+        </div>
+    </div>
+
+    <!-- Scheduling -->
+    <div class="screen" id="scheduling">
+        <div class="schedule-container">
+            <div class="chat-header">
+                <h2>Pick Your Time</h2>
+                <p>when works best for you?</p>
+            </div>
+
+            <div class="calendar-slots">
+                <div class="time-slot" onclick="selectTimeSlot(this)">
+                    <div style="font-weight: 600; margin-bottom: 5px;">Tuesday</div>
+                    <div style="font-size: 14px; color: #718096;">6:00 PM</div>
+                </div>
+                <div class="time-slot" onclick="selectTimeSlot(this)">
+                    <div style="font-weight: 600; margin-bottom: 5px;">Wednesday</div>
+                    <div style="font-size: 14px; color: #718096;">7:00 PM</div>
+                </div>
+                <div class="time-slot" onclick="selectTimeSlot(this)">
+                    <div style="font-weight: 600; margin-bottom: 5px;">Thursday</div>
+                    <div style="font-size: 14px; color: #718096;">6:00 PM</div>
+                </div>
+                <div class="time-slot" onclick="selectTimeSlot(this)">
+                    <div style="font-weight: 600; margin-bottom: 5px;">Saturday</div>
+                    <div style="font-size: 14px; color: #718096;">10:00 AM</div>
+                </div>
+            </div>
+
+            <div style="background: white; padding: 30px; border-radius: 20px; margin: 30px 0; box-shadow: 0 8px 30px rgba(0,0,0,0.06);">
+                <h3 style="margin-bottom: 15px;">Session Details</h3>
+                <p style="color: #718096; margin-bottom: 20px;">Group: The Navigators</p>
+                <p style="color: #718096; margin-bottom: 20px;">Duration: 60 minutes</p>
+                <p style="font-size: 24px; font-weight: 600; color: var(--accent-purple);">AED 120 / session</p>
+            </div>
+
+            <button class="cta-button" onclick="showPayment()">Continue to Payment</button>
+        </div>
+    </div>
+
+    <!-- Payment (Mock) -->
+    <div class="screen" id="payment">
+        <div class="schedule-container">
+            <div class="chat-header">
+                <h2>Complete Booking</h2>
+                <p>secure your spot</p>
+            </div>
+
+            <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.06); margin: 30px 0;">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <div style="font-size: 48px; margin-bottom: 20px;">💳</div>
+                    <h3 style="margin-bottom: 10px;">Payment Information</h3>
+                    <p style="color: #718096;">Powered by Stripe (Sandbox Mode)</p>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Card Number</label>
+                    <input type="text" placeholder="4242 4242 4242 4242" style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px;">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Expiry</label>
+                        <input type="text" placeholder="MM/YY" style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px;">
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 500;">CVC</label>
+                        <input type="text" placeholder="123" style="width: 100%; padding: 14px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px;">
+                    </div>
+                </div>
+
+                <div style="background: #f7fafc; padding: 20px; border-radius: 12px; margin-top: 30px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span>Session Cost</span>
+                        <span style="font-weight: 600;">AED 120</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding-top: 10px; border-top: 2px solid #e2e8f0;">
+                        <span style="font-weight: 600;">Total</span>
+                        <span style="font-size: 20px; font-weight: 600; color: var(--accent-purple);">AED 120</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="cta-button" onclick="showDashboard()">Confirm & Pay</button>
+        </div>
+    </div>
+
+    <!-- Therapist Dashboard -->
+    <div class="screen" id="dashboard">
+        <div class="dashboard-container">
+            <div class="dashboard-header">
+                <h1>Therapist Dashboard</h1>
+                <p style="color: #718096; font-size: 18px;">Session: The Navigators • Tuesday, 6:00 PM</p>
+            </div>
+
+            <div class="dashboard-grid">
+                <!-- Group Mood Heatmap -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Group Mood Today</h3>
+                        <span style="font-size: 12px; color: #718096;">High Anxiety, Low Energy</span>
+                    </div>
+                    <div class="mood-heatmap">
+                        <div class="heatmap-cell" style="background: #f093fb;">😰</div>
+                        <div class="heatmap-cell" style="background: #667eea;">😔</div>
+                        <div class="heatmap-cell" style="background: #f093fb;">😟</div>
+                        <div class="heatmap-cell" style="background: #ed64a6;">😓</div>
+                        <div class="heatmap-cell" style="background: #667eea;">😞</div>
+                    </div>
+                    <p style="color: #718096; font-size: 14px; margin-top: 15px;">
+                        Today's theme: Performance pressure & burnout concerns
+                    </p>
+                </div>
+
+                <!-- Participant Profiles -->
+                <div class="dashboard-card" style="grid-column: span 2;">
+                    <div class="card-header">
+                        <h3 class="card-title">Participant Quick Cards</h3>
+                    </div>
+                    <ul class="participant-list">
+                        <li class="participant-item">
+                            <div class="participant-name">Mani • 22 • Student</div>
+                            <div class="participant-trigger">
+                                <strong>Primary concern:</strong> Coding bootcamp stress, family expectations<br>
+                                <strong>Trigger:</strong> Failure, not meeting expectations<br>
+                                <strong>Needs:</strong> Validation on hard work, permission to rest
+                            </div>
+                        </li>
+                        <li class="participant-item">
+                            <div class="participant-name">Sarah • 26 • Designer</div>
+                            <div class="participant-trigger">
+                                <strong>Primary concern:</strong> Career transition anxiety, imposter syndrome<br>
+                                <strong>Trigger:</strong> Comparison with peers<br>
+                                <strong>Needs:</strong> Confidence building, perspective on growth
+                            </div>
+                        </li>
+                        <li class="participant-item">
+                            <div class="participant-name">Alex • 24 • Engineer</div>
+                            <div class="participant-trigger">
+                                <strong>Primary concern:</strong> Burnout from startup culture<br>
+                                <strong>Trigger:</strong> "Always-on" work culture<br>
+                                <strong>Needs:</strong> Boundary setting strategies, work-life balance
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Session Brief -->
+                <div class="dashboard-card">
+                    <div class="card-header">
+                        <h3 class="card-title">Session Preparation</h3>
+                    </div>
+                    <p style="color: #718096; line-height: 1.8; margin-bottom: 20px;">
+                        This group struggles with high self-expectations and fear of failure. 
+                        Common themes include family pressure, career uncertainty, and the belief 
+                        that rest equals weakness.
+                    </p>
+                    <button class="btn-secondary" onclick="downloadBrief()">
+                        📄 Download Full Brief (PDF)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Navigation between screens
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+            window.scrollTo(0, 0);
+        }
+
+        function startJourney() {
+            showScreen('chat');
+        }
+
+        // Chat functionality
+        let chatMessages = [
+            { role: 'bot', text: 'hey there. the world can be a lot sometimes. how are you holding up today?' }
+        ];
+        let messageCount = 0;
+
+        function handleEnter(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            
+            if (message) {
+                addMessage('user', message);
+                input.value = '';
+                
+                messageCount++;
+                updateProgress();
+                
+                setTimeout(() => {
+                    showTyping();
+                    setTimeout(() => {
+                        removeTyping();
+                        respondToUser(message);
+                    }, 2000);
+                }, 500);
+            }
+        }
+
+        function addMessage(role, text) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = `message-avatar ${role}-avatar`;
+            avatar.textContent = role === 'bot' ? '🌙' : '✨';
+            
+            const content = document.createElement('div');
+            content.className = 'message-content';
+            content.innerHTML = `<p>${text}</p>`;
+            
+            if (role === 'user') {
+                messageDiv.appendChild(content);
+                messageDiv.appendChild(avatar);
+            } else {
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(content);
+            }
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function showTyping() {
+            const messagesDiv = document.getElementById('messages');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message bot';
+            typingDiv.id = 'typing';
+            typingDiv.innerHTML = `
+                <div class="message-avatar bot-avatar">🌙</div>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            `;
+            messagesDiv.appendChild(typingDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function removeTyping() {
+            const typing = document.getElementById('typing');
+            if (typing) typing.remove();
+        }
+
+        function respondToUser(userMessage) {
+            const responses = [
+                "that sounds really heavy. i'm sorry you're dealing with that. how long has this been going on?",
+                "i hear you. it sounds like you're carrying a lot of weight right now. what does a good day look like for you?",
+                "thank you for sharing that with me. it takes courage to open up. what do you think you need most right now?",
+                "i think i'm starting to understand what you're going through. let's try something different—something a bit more interactive. would that be okay?"
+            ];
+            
+            if (messageCount < 4) {
+                addMessage('bot', responses[messageCount - 1]);
+            } else {
+                addMessage('bot', responses[3]);
+                setTimeout(() => {
+                    showScreen('bubbleGame');
+                    initBubbleGame();
+                }, 2000);
+            }
+        }
+
+        function updateProgress() {
+            const progress = (messageCount / 4) * 100;
+            document.getElementById('chatProgress').style.width = progress + '%';
+        }
+
+        // Bubble Game
+        const stressors = [
+            { text: 'Work', color: '#667eea', size: 100 },
+            { text: 'Family', color: '#f093fb', size: 120 },
+            { text: 'Money', color: '#4facfe', size: 90 },
+            { text: 'Future', color: '#ed64a6', size: 110 },
+            { text: 'Health', color: '#fee140', size: 95 },
+            { text: 'Relationships', color: '#764ba2', size: 105 }
+        ];
+
+        function initBubbleGame() {
+            const arena = document.getElementById('bubbleArena');
+            arena.innerHTML = '';
+            
+            stressors.forEach((stressor, index) => {
+                const bubble = document.createElement('div');
+                bubble.className = 'bubble';
+                bubble.textContent = stressor.text;
+                bubble.style.width = stressor.size + 'px';
+                bubble.style.height = stressor.size + 'px';
+                bubble.style.background = `linear-gradient(135deg, ${stressor.color}, ${adjustColor(stressor.color, 20)})`;
+                bubble.style.left = Math.random() * (arena.offsetWidth - stressor.size) + 'px';
+                bubble.style.top = Math.random() * (arena.offsetHeight - stressor.size) + 'px';
+                bubble.style.animationDelay = index * 0.2 + 's';
+                
+                bubble.onclick = function() {
+                    this.classList.add('popping');
+                    setTimeout(() => this.remove(), 500);
+                };
+                
+                arena.appendChild(bubble);
+            });
+        }
+
+        function adjustColor(color, percent) {
+            const num = parseInt(color.replace('#', ''), 16);
+            const amt = Math.round(2.55 * percent);
+            const R = (num >> 16) + amt;
+            const G = (num >> 8 & 0x00FF) + amt;
+            const B = (num & 0x0000FF) + amt;
+            return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+                (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+                (B < 255 ? B < 1 ? 0 : B : 255))
+                .toString(16).slice(1);
+        }
+
+        function finishBubbleGame() {
+            showScreen('moodGame');
+        }
+
+        // Mood Slider
+        const moodSlider = document.getElementById('moodSlider');
+        if (moodSlider) {
+            moodSlider.addEventListener('input', function() {
+                updateLandscape(this.value);
+            });
+        }
+
+        function updateLandscape(value) {
+            const sky = document.getElementById('landscapeSky');
+            const sun = document.getElementById('sun');
+            
+            if (value < 33) {
+                // Stormy
+                sky.style.background = 'linear-gradient(to bottom, #2d3561, #596275)';
+                sun.style.opacity = '0';
+            } else if (value < 66) {
+                // Cloudy
+                sky.style.background = 'linear-gradient(to bottom, #a8b5c8, #c9d6df)';
+                sun.style.opacity = '0.3';
+            } else {
+                // Sunny
+                sky.style.background = 'linear-gradient(to bottom, #4facfe, #87ceeb)';
+                sun.style.opacity = '1';
+            }
+        }
+
+        function finishMoodGame() {
+            showScreen('insight');
+        }
+
+        function showMatching() {
+            showScreen('matching');
+        }
+
+        function showScheduling() {
+            showScreen('scheduling');
+        }
+
+        function selectTimeSlot(element) {
+            document.querySelectorAll('.time-slot').forEach(slot => {
+                slot.classList.remove('selected');
+            });
+            element.classList.add('selected');
+        }
+
+        function showPayment() {
+            showScreen('payment');
+        }
+
+        function showDashboard() {
+            showScreen('dashboard');
+        }
+
+        function downloadBrief() {
+            alert('Therapist handoff PDF would download here (mock).\n\nWould contain:\n- Group profile & themes\n- Individual participant summaries\n- Key concerns & triggers\n- Recommended focus areas');
+        }
+    </script>
+</body>
+</html>
