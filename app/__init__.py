@@ -15,9 +15,10 @@ def create_app(config_class=None):
     
     extensions.db = firestore.client()
 
-    from app.auth import auth_bp
-    from app.core import core_bp
-    from app.ai import ai_bp
+
+    from app.auth.routes import auth_bp 
+    from app.core.routes import core_bp
+    from app.ai.routes import ai_bp
 
     app.register_blueprint(core_bp, url_prefix="/")
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
