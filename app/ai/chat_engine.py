@@ -22,7 +22,7 @@ class TherapyResponse(BaseModel):
 
 class ChatbotEngine:
     """
-    Therapist Chatbot powered by Google Gemini 2.5 Flash
+    Therapist Chatbot powered by Google Gemini 2.5 Flash Lite
     (Uses Native Pydantic Structured Outputs)
     """
     def __init__(self):
@@ -31,7 +31,7 @@ class ChatbotEngine:
             raise ValueError("GOOGLE_API_KEY not found")
 
         self.client = genai.Client(api_key=api_key.strip())
-        self.model_id = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+        self.model_id = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
         self.conversation_history = []
 
         self.system_prompt = (
