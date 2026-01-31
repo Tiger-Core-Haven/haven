@@ -108,12 +108,12 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 3. **Install dependencies**
 ```bash
-pip install flask flask-cors
+pip install -r requirements.txt
 ```
 
 4. **Run the application**
 ```bash
-python app.py
+python run.py
 ```
 
 5. **Open in browser**

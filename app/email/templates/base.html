@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ subject or app_name }}</title>
+    <style>
+      .preheader { display: none !important; visibility: hidden; opacity: 0; color: transparent; height: 0; width: 0; }
+      .container { width: 100%; background: #f6f4f1; margin: 0; padding: 0; }
+      .card { max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 10px 30px rgba(35, 40, 55, 0.08); }
+      .header { padding: 32px 36px 18px 36px; background: linear-gradient(135deg, #f5f2ff 0%, #eef6ff 100%); }
+      .brand { font-size: 20px; letter-spacing: 0.5px; font-weight: 700; color: #2d3748; }
+      .tagline { margin: 6px 0 0 0; color: #5a6475; font-size: 14px; }
+      .content { padding: 30px 36px 10px 36px; color: #2d3748; font-size: 16px; line-height: 1.6; }
+      .cta { display: inline-block; margin: 18px 0 4px 0; padding: 14px 24px; background: #5b6cff; color: #ffffff !important; text-decoration: none; border-radius: 999px; font-weight: 600; }
+      .subtle { color: #6b7280; font-size: 14px; }
+      .divider { height: 1px; background: #e9e9f0; margin: 24px 0; }
+      .footer { padding: 0 36px 32px 36px; color: #8a93a3; font-size: 12px; line-height: 1.6; }
+      .pill { display: inline-block; background: #f4f6fb; padding: 6px 10px; border-radius: 999px; font-size: 12px; color: #4a5568; margin-right: 6px; }
+      @media (max-width: 600px) {
+        .card { border-radius: 0; }
+        .header, .content, .footer { padding-left: 20px; padding-right: 20px; }
+      }
+    </style>
+  </head>
+  <body style="margin:0; padding:0; font-family: 'Outfit', 'Segoe UI', Arial, sans-serif; background:#f6f4f1;">
+    <span class="preheader">{{ preheader }}</span>
+    <table role="presentation" class="container" width="100%" cellspacing="0" cellpadding="0">
+      <tr>
+        <td style="padding: 32px 16px;">
+          <table role="presentation" class="card" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <td class="header">
+                <div class="brand">{{ app_name }}</div>
+                <div class="tagline">{{ tagline }}</div>
+              </td>
+            </tr>
+            <tr>
+              <td class="content">
+                {% block content %}{% endblock %}
+              </td>
+            </tr>
+            <tr>
+              <td class="footer">
+                <div class="divider"></div>
+                <div>{{ footer_note }}</div>
+                <div style="margin-top: 8px;">
+                  Need help? Reach us at
+                  <a href="mailto:{{ support_email }}" style="color:#5b6cff; text-decoration:none;">{{ support_email }}</a>
+                </div>
+                <div style="margin-top: 10px;">&copy; {{ year }} {{ app_name }}. All rights reserved.</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

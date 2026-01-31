@@ -4,11 +4,11 @@
 
 ### Option 1: View the Prototype Immediately (No Setup)
 
-1. Open `haven-app.html` in any modern browser
+1. Open `app/core/core_templates/haven-app.html` in any modern browser
 2. Click "Begin Your Journey"
 3. Experience the full user flow!
 
-**Note**: This is the frontend-only demo. The backend features are simulated in JavaScript.
+**Note**: This opens the UI only. For chat + matching + booking APIs, run the backend (Option 2).
 
 ---
 
@@ -16,12 +16,12 @@
 
 #### Step 1: Install Python Dependencies
 ```bash
-pip install flask flask-cors
+pip install -r requirements.txt
 ```
 
 #### Step 2: Run the Backend
 ```bash
-python app.py
+python run.py
 ```
 
 Backend will start at: `http://localhost:5000`
@@ -56,13 +56,15 @@ Navigate to: `http://localhost:5000`
 
 ```
 haven-therapy-matcher/
-├── haven-app.html       # Main frontend (can run standalone)
-├── app.py              # Flask backend with AI logic
-├── requirements.txt    # Python dependencies
-├── README.md          # Full documentation
-├── PRESENTATION.md    # Presentation deck content
-├── LICENSE            # MIT license
-└── QUICKSTART.md      # This file
+├── app/                         # Flask app package
+│   └── core/core_templates/     # Main frontend template (standalone too)
+├── app.py                       # Flask entrypoint
+├── run.py                       # Dev runner
+├── requirements.txt             # Python dependencies
+├── README.md                    # Full documentation
+├── PRESENTATION.md              # Presentation deck content
+├── LICENSE                      # MIT license
+└── QUICKSTART.md                # This file
 ```
 
 ---
