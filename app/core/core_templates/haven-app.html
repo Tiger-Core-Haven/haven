@@ -24,6 +24,7 @@
             <div class="auth-actions">
                 <button class="auth-button ghost" data-auth="guest" onclick="startSignup()">Sign up</button>
                 <button class="auth-button" data-auth="guest" onclick="startLogin()">Log in</button>
+                <button class="auth-button ghost" data-auth="therapist" onclick="showDashboard()">Therapist Dashboard</button>
                 <span class="auth-name" id="authUserName" data-auth="user"></span>
                 <button class="auth-button ghost" data-auth="user" onclick="logout()">Log out</button>
             </div>
@@ -416,6 +417,7 @@
             let sessionStarted = false;
             let authInFlight = false;
             const authNameEl = document.getElementById('authUserName');
+            let currentRole = localStorage.getItem('userRole') || null;
 
             setPersistence(auth, browserLocalPersistence).catch((error) => {
                 console.warn("Auth persistence error:", error);
@@ -479,6 +481,14 @@
                     if (!response.ok) {
                         throw new Error("Backend sync failed");
                     }
+                    const payload = await response.json();
+                    currentRole = payload.role || null;
+                    if (currentRole) {
+                        localStorage.setItem('userRole', currentRole);
+                    } else {
+                        localStorage.removeItem('userRole');
+                    }
+                    updateAuthUI(user, currentRole);
 
                     await startChatSession(token);
                     sessionStarted = true;
@@ -488,12 +498,16 @@
                 }
             }
 
-            function updateAuthUI(user) {
+            function updateAuthUI(user, roleOverride = null) {
+                const role = roleOverride || currentRole;
                 document.querySelectorAll('[data-auth="guest"]').forEach((el) => {
                     el.style.display = user ? 'none' : 'inline-flex';
                 });
                 document.querySelectorAll('[data-auth="user"]').forEach((el) => {
                     el.style.display = user ? 'inline-flex' : 'none';
+                });
+                document.querySelectorAll('[data-auth="therapist"]').forEach((el) => {
+                    el.style.display = user && role === 'therapist' ? 'inline-flex' : 'none';
                 });
                 if (authNameEl) {
                     authNameEl.textContent = user
@@ -524,6 +538,8 @@
                     }
                 } else if (!user) {
                     sessionStarted = false;
+                    currentRole = null;
+                    localStorage.removeItem('userRole');
                 }
             });
 
@@ -558,11 +574,13 @@
                 } finally {
                     localStorage.removeItem('userToken');
                     localStorage.removeItem('session_id');
+                    localStorage.removeItem('userRole');
                     sessionStarted = false;
                     matchData = null;
                     selectedTimeSlot = null;
                     chatTurnCount = 1;
                     showScreen('landing');
+                    currentRole = null;
                     updateAuthUI(null);
                 }
             };
@@ -987,6 +1005,10 @@
             }
 
             window.showDashboard = function () {
+                if (currentRole !== 'therapist') {
+                    alert('Therapist dashboard access requires a therapist account.');
+                    return;
+                }
                 showScreen('dashboard');
                 loadTherapistDashboard();
             }
