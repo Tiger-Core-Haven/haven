@@ -76,7 +76,7 @@ body {
         font-size: 56px;
     }
     .hero-logo {
-        width: 150px;
+        width: 130px;
     }
     .tagline {
         font-size: 20px;
@@ -96,6 +96,9 @@ body {
 }
 
 @media (max-width: 600px) {
+    .hero-logo {
+        width: 100px;
+    }
     .landing {
         padding-top: 20px;
     }
@@ -230,7 +233,7 @@ body {
 }
 
 .hero-logo {
-    width: 180px;
+    width: 150px;
     max-width: 70%;
     height: auto;
     margin: 0 auto 16px;
