@@ -1,5 +1,6 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from flask import request, jsonify, g, Response
 from google.cloud import firestore
 from app.auth.utils import token_required
@@ -57,7 +58,15 @@ def _parse_time_string(time_str):
             continue
     return None
 
-def _next_occurrence(day_name, time_str):
+def _get_timezone(tz_name):
+    if not tz_name:
+        return None
+    try:
+        return ZoneInfo(tz_name)
+    except Exception:
+        return None
+
+def _next_occurrence(day_name, time_str, tz_name=None):
     if not day_name:
         return None
     weekday_map = {
@@ -72,13 +81,14 @@ def _next_occurrence(day_name, time_str):
     target = weekday_map.get(day_name.strip().lower())
     if target is None:
         return None
-    now = datetime.now()
-    session_time = _parse_time_string(time_str) or now.time()
+    tz = _get_timezone(tz_name)
+    now = datetime.now(tz) if tz else datetime.now()
+    session_time = _parse_time_string(time_str) or now.time().replace(second=0, microsecond=0)
     days_ahead = (target - now.weekday() + 7) % 7
     if days_ahead == 0 and session_time <= now.time():
         days_ahead = 7
     session_date = now.date() + timedelta(days=days_ahead)
-    return datetime.combine(session_date, session_time)
+    return datetime.combine(session_date, session_time, tzinfo=tz) if tz else datetime.combine(session_date, session_time)
 
 def _build_calendar_link(booking_id):
     if not booking_id:
@@ -86,10 +96,17 @@ def _build_calendar_link(booking_id):
     app_base_url = os.getenv("APP_BASE_URL", "http://localhost:5000")
     return f"{app_base_url}/api/chat/session/calendar/{booking_id}.ics"
 
+def _to_utc(dt):
+    if dt.tzinfo:
+        return dt.astimezone(timezone.utc)
+    return dt.replace(tzinfo=timezone.utc)
+
 def _build_ics_event(booking_id, title, start_dt, end_dt, description):
     dtstamp = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
-    dtstart = start_dt.strftime('%Y%m%dT%H%M%S')
-    dtend = end_dt.strftime('%Y%m%dT%H%M%S')
+    utc_start = _to_utc(start_dt)
+    utc_end = _to_utc(end_dt)
+    dtstart = utc_start.strftime('%Y%m%dT%H%M%SZ')
+    dtend = utc_end.strftime('%Y%m%dT%H%M%SZ')
     safe_title = (title or "Haven Session").replace("\n", " ").strip()
     safe_desc = (description or "").replace("\n", " ").strip()
     lines = [
@@ -128,6 +145,7 @@ def _session_summary_payload(session_data, session_id=None):
         },
         'session_date': session_date,
         'session_time': session_time,
+        'time_zone': session_data.get('booking_time_zone'),
         'calendar_url': calendar_url,
         'stressors': session_data.get('stressors', []),
         'mood_level': session_data.get('mood_level'),
@@ -305,6 +323,7 @@ def confirm_booking():
     time_slot = data.get('time_slot')
     group_name = data.get('group_name', 'Your Group')
     price = data.get('price')
+    time_zone = data.get('time_zone')
 
     if not session_id or not time_slot:
         return jsonify({'error': 'session_id and time_slot are required'}), 400
@@ -317,6 +336,7 @@ def confirm_booking():
         'group_name': group_name,
         'group_id': data.get('group_id'),
         'price': price,
+        'time_zone': time_zone,
         'created_at': datetime.utcnow().isoformat()
     })
 
@@ -325,7 +345,8 @@ def confirm_booking():
         'booking_time_slot': time_slot,
         'booking_created_at': datetime.utcnow().isoformat(),
         'matched_group_name': group_name,
-        'matched_group_id': data.get('group_id')
+        'matched_group_id': data.get('group_id'),
+        'booking_time_zone': time_zone
     }, merge=True)
 
     session_date = ""
@@ -405,6 +426,7 @@ def session_calendar(booking_id):
     session_id = booking.get('session_id')
     session_doc = _get_session_doc(session_id) if session_id else None
     session_data = session_doc.to_dict() if session_doc else {}
+    time_zone = booking.get('time_zone') or session_data.get('booking_time_zone')
 
     session_date = session_data.get('booking_session_date')
     session_time = session_data.get('booking_session_time')
@@ -417,7 +439,7 @@ def session_calendar(booking_id):
         elif isinstance(time_slot, str):
             session_date = time_slot
 
-    start_dt = _next_occurrence(session_date, session_time)
+    start_dt = _next_occurrence(session_date, session_time, time_zone)
     if not start_dt:
         start_dt = datetime.now() + timedelta(days=1)
     end_dt = start_dt + timedelta(hours=1)

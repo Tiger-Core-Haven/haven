@@ -1047,9 +1047,10 @@
                     const groupName = group.name || 'Your Group';
                     const groupDesc = group.description || '';
 
+                    const tzLabel = data.time_zone ? ` (${data.time_zone})` : '';
                     const sessionLine = data.session_time
-                        ? `${data.session_date} · ${data.session_time}`
-                        : (data.session_date || 'Scheduled session');
+                        ? `${data.session_date} · ${data.session_time}${tzLabel}`
+                        : (data.session_date ? `${data.session_date}${tzLabel}` : 'Scheduled session');
 
                     const groupEl = document.getElementById('clientGroupName');
                     const timeEl = document.getElementById('clientSessionTime');
@@ -1163,7 +1164,8 @@
                                 ?.group
                                     ?.id || null,
                             price: document.getElementById('schedulePrice')
-                                ?.textContent || 'AED 120 / session'
+                                ?.textContent || 'AED 120 / session',
+                            time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone || null
                         })
                     });
                     if (!res.ok) {
