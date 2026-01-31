@@ -111,7 +111,11 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-4. **Run the application**
+4. **Add Firebase Admin credentials**
+Download a Firebase service account JSON and save it as `serviceAccountKey.json` in the project root,
+or set `FIREBASE_KEY_PATH` to its location.
+
+5. **Run the application**
 ```bash
 python run.py
 ```

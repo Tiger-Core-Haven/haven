@@ -19,7 +19,11 @@
 pip install -r requirements.txt
 ```
 
-#### Step 2: Run the Backend
+#### Step 2: Add Firebase Admin credentials
+Download a Firebase service account JSON and save it as `serviceAccountKey.json` in the project root,
+or set `FIREBASE_KEY_PATH` to its location.
+
+#### Step 3: Run the Backend
 ```bash
 python run.py
 ```

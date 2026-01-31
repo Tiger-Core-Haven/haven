@@ -1,4 +1,5 @@
 # app/__init__.py
+import os
 from flask import Flask
 from app.extensions import db
 import app.extensions as extensions
@@ -10,7 +11,14 @@ def create_app(config_class=None):
     app.config.from_object(config_class or 'config.Config')
 
     if not firebase_admin._apps:
-        cred = credentials.Certificate(app.config['FIREBASE_KEY_PATH'])
+        key_path = app.config.get('FIREBASE_KEY_PATH')
+        if not key_path or not os.path.exists(key_path):
+            raise FileNotFoundError(
+                "Firebase service account key not found. "
+                "Set FIREBASE_KEY_PATH to your JSON key file or place it at "
+                f"{app.config.get('FIREBASE_KEY_PATH')}."
+            )
+        cred = credentials.Certificate(key_path)
         firebase_admin.initialize_app(cred)
     
     extensions.db = firestore.client()
