@@ -9,7 +9,7 @@ import json
 from datetime import datetime, timedelta
 import random
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=".")
 CORS(app)
 
 # =====================================================
