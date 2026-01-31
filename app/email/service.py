@@ -24,10 +24,20 @@ def _mail_enabled():
     return os.getenv("MAIL_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
 
 def _base_context():
+    app_base_url = os.getenv("APP_BASE_URL", "http://localhost:5000")
     return {
         "app_name": os.getenv("APP_NAME", "Haven"),
         "tagline": os.getenv("APP_TAGLINE", "a warm space for your mind to rest"),
         "support_email": os.getenv("SUPPORT_EMAIL", "support@haven.app"),
+        "app_base_url": app_base_url,
+        "brand_logo_url": os.getenv(
+            "BRAND_LOGO_URL",
+            f"{app_base_url}/static/branding/haven.png"
+        ),
+        "brand_mark_url": os.getenv(
+            "BRAND_MARK_URL",
+            f"{app_base_url}/static/branding/haven-mark.png"
+        ),
         "footer_note": os.getenv(
             "MAIL_FOOTER_NOTE",
             "you're receiving this because you interacted with our app."

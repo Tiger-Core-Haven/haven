@@ -3,7 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Haven - Your Mental Wellness Companion</title>
+    <title>Haven — A Warm Space for Your Mind</title>
+    <meta name="description" content="Haven is a gentle mental wellness app that uses calm conversation and reflective exercises to match you with supportive small groups.">
+    <meta property="og:title" content="Haven — A Warm Space for Your Mind">
+    <meta property="og:description" content="A gentle mental wellness app that uses calm conversation and reflective exercises to match you with supportive small groups.">
+    <meta property="og:image" content="{{ url_for('static', filename='branding/haven.png') }}">
+    <meta property="og:type" content="website">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='branding/haven-mark.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='branding/haven-mark.png') }}">
     <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Space+Mono:wght@400;700&family=DM+Serif+Display&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
@@ -18,6 +25,7 @@
     <div class="screen active" id="landing">
         <div class="landing">
             <div class="hero-content">
+                <img class="hero-logo" src="{{ url_for('static', filename='branding/haven.png') }}" alt="Haven logo">
                 <h1 class="logo">Haven</h1>
                 <p class="tagline">A warm space for your mind to rest</p>
                 <button class="cta-button" onclick="startJourney()">Begin Your Journey</button>
