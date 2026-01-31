@@ -1,101 +1,120 @@
-import boto3
-import json
-import re
+import os
+from google import genai
+from google.genai import types
+from pydantic import BaseModel, Field
+from typing import Literal, Optional
 
-# Initialize Bedrock Client
-bedrock_client = boto3.client(
-    service_name='bedrock-runtime', 
-    region_name='us-east-1' 
-)
+class ExtractedData(BaseModel):
+    primary_complaint: Optional[str] = Field(None, description="The user's main struggle (e.g. Anxiety, Burnout).")
+    duration: Optional[str] = Field(None, description="How long the issue has persisted.")
+    severity: Optional[Literal["low", "medium", "high"]] = Field(None, description="Subjective severity.")
+    goal: Optional[str] = Field(None, description="What the user wants (venting, solutions, etc).")
+
+class TherapyResponse(BaseModel):
+    message: str = Field(description="The warm, empathetic, lowercase response to the user.")
+    ready_for_next_phase: bool = Field(description="Set to True ONLY if the user explicitly consents to moving forward.")
+    extracted_data: ExtractedData
 
 class ChatbotEngine:
     """
-    Therapist Chatbot powered by AWS Bedrock (Claude 3.5 Sonnet)
+    Therapist Chatbot powered by Google Gemini 1.5 Flash
+    (Uses Native Pydantic Structured Outputs)
     """
     def __init__(self):
-        # Using Sonnet for better adherence to complex "consent" instructions
-        self.model_id = "us.anthropic.claude-3-5-sonnet-20240620-v1:0" 
-        self.conversation_history = []
+        raw_key = os.getenv("GOOGLE_API_KEY")
+        if not raw_key:
+            raise ValueError("GOOGLE_API_KEY not found")
         
-        self.system_prompt = """
-        You are a warm, empathetic intake facilitator for 'Haven', a digital group therapy platform.
-        Your goal is to gather insights about the user to match them with a support group.
+        self.client = genai.Client(api_key=raw_key.strip())
+        
+        self.system_instruction = """
+        You are a mental wellness intake facilitator for a digital group therapy platform.
 
-        YOUR PROCESS (Must be followed in order):
-        1. EXPLORE: Ask gentle, open-ended questions to understand their:
-           - Primary struggle (Anxiety, Burnout, Grief, etc.)
-           - Duration (How long has this been happening?)
-           - Severity (Impact on daily life)
-           - Goal (Venting, strategies, or connection?)
-        
-        2. SUMMARIZE & CONSENT (Crucial):
-           - Once you have a clear picture, DO NOT immediately end the session.
-           - Instead, summarize what you have heard in a validating way.
-           - Explicitly ask: "Does that sound about right? If you're ready, I can look for a group that matches this profile."
-        
-        3. FINALIZE:
-           - ONLY set "ready_for_next_phase" to TRUE if the user explicitly confirms (e.g., "Yes", "Go ahead").
-           - If they hesitate, continue listening.
+        Your role is not to diagnose, treat, or give clinical advice. You are here to listen, reflect, and gently guide the user toward clarity and appropriate group support.
 
-        OUTPUT RULES:
-        - You must output ONLY valid JSON.
-        - Do not include markdown formatting (like ```json).
-        - Structure:
-        {
-            "message": "Your conversational response here (lowercase, warm, human-like)",
-            "ready_for_next_phase": boolean,
-            "extracted_data": {
-                "primary_complaint": "summary string or null",
-                "duration": "summary string or null",
-                "severity": "low/med/high or null",
-                "goal": "summary string or null"
-            }
-        }
+        Core Principles:
+
+        Maintain a calm, warm, non-judgmental tone.
+
+        Use simple, human language. Avoid clinical jargon.
+
+        Ask open-ended questions that help users articulate emotions, stressors, goals, and patterns.
+
+        Validate emotions without reinforcing negative beliefs.
+
+        Never escalate into crisis intervention unless explicitly required (assume non-emergency context).
+
+        Conversational Goals:
+
+        Understand the primary emotional concern (e.g., anxiety, burnout, grief, social stress).
+
+        Identify context (academic, work, relationships, identity, life transitions).
+
+        Detect intensity and persistence (frequency, duration, impact on daily life).
+
+        Clarify the user’s intent (venting, reflection, growth, support).
+
+        Collect timezone and general availability in a natural way.
+
+        Questioning Strategy:
+
+        Start broad, then gently narrow.
+
+        Ask no more than 6–8 meaningful questions total.
+
+        Reflect back insights occasionally (“It sounds like…”).
+
+        Avoid rapid-fire questioning.
+
+        Timezone & Availability:
+
+        At an appropriate moment, naturally ask where the user is located or what timezone they’re in.
+
+        Later, ask about general availability windows (morning / afternoon / evening).
+
+        Ending the Intake:
+
+        End the conversation only when you have sufficient clarity on:
+
+        Main concern
+
+        Desired support style
+
+        Timezone + rough availability
+
+        When ending, summarize what you understood in 2–3 sentences.
+
+        Ask for consent before moving to group matching.
         """
 
-    def generate_response(self, user_message):
-        self.conversation_history.append({
-            "role": "user",
-            "content": [{"text": user_message}]
-        })
-
-        try:
-            response = bedrock_client.converse(
-                modelId=self.model_id,
-                messages=self.conversation_history,
-                system=[{"text": self.system_prompt}],
-                inferenceConfig={"temperature": 0.5, "maxTokens": 512}
+        # forced schema
+        self.chat = self.client.chats.create(
+            model="gemini-2.5-flash-lite",
+            config=types.GenerateContentConfig(
+                system_instruction=self.system_instruction,
+                temperature=0.5,
+                response_mime_type="application/json",
+                response_schema=TherapyResponse.model_json_schema()
             )
+        )
 
-            ai_response_text = response['output']['message']['content'][0]['text']
+    def generate_response(self, user_message: str) -> dict:
+        try:
+            response = self.chat.send_message(user_message)
             
-            # Robust JSON extraction using Regex
-            json_match = re.search(r'\{.*\}', ai_response_text, re.DOTALL)
+            structured_response = TherapyResponse.model_validate_json(response.text)
             
-            if json_match:
-                clean_json = json_match.group(0)
-                parsed_data = json.loads(clean_json)
-            else:
-                # Fallback if the model is chatty but valid
-                # We attempt to treat the whole text as the message if JSON fails
-                parsed_data = {
-                    "message": ai_response_text,
-                    "ready_for_next_phase": False,
-                    "extracted_data": {}
-                }
-
-            # Save assistant response to history
-            self.conversation_history.append({
-                "role": "assistant",
-                "content": [{"text": parsed_data['message']}]
-            })
-
-            return parsed_data
+            return structured_response.model_dump()
 
         except Exception as e:
-            print(f"Bedrock Error: {e}")
+            print(f"Gemini Error: {e}")
             return {
                 "message": "i'm having a little trouble connecting right now. could you say that again?",
                 "ready_for_next_phase": False,
-                "extracted_data": {}
+                "extracted_data": {
+                    "primary_complaint": None,
+                    "duration": None,
+                    "severity": None,
+                    "goal": None
+                }
             }
