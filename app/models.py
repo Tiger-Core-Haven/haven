@@ -4,10 +4,12 @@ from datetime import datetime
 class User:
     collection_name = 'users'
 
-    def __init__(self, uid, email, role='client'):
+    def __init__(self, uid, email, role='client', display_name=None, photo_url=None):
         self.uid = uid
         self.email = email
         self.role = role
+        self.display_name = display_name
+        self.photo_url = photo_url
         self.created_at = datetime.now()
 
     @staticmethod
@@ -15,7 +17,13 @@ class User:
         doc = db.collection(User.collection_name).document(uid).get()
         if doc.exists:
             data = doc.to_dict()
-            return User(uid=uid, email=data.get('email'), role=data.get('role'))
+            return User(
+                uid=uid,
+                email=data.get('email'),
+                role=data.get('role', 'client'),
+                display_name=data.get('display_name'),
+                photo_url=data.get('photo_url')
+            )
         return None
 
     def save(self):
@@ -23,7 +31,14 @@ class User:
         db.collection(self.collection_name).document(self.uid).set({
             'email': self.email,
             'role': self.role,
+            'display_name': self.display_name,
+            'photo_url': self.photo_url,
             'created_at': self.created_at
+        }, merge=True)
+
+    def touch_last_login(self):
+        db.collection(self.collection_name).document(self.uid).set({
+            'last_login_at': datetime.now()
         }, merge=True)
 
 class ChatSession:

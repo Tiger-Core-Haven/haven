@@ -22,6 +22,8 @@ def token_required(f):
             #
             g.user_uid = decoded_token['uid']
             g.user_email = decoded_token.get('email')
+            g.user_name = decoded_token.get('name')
+            g.user_picture = decoded_token.get('picture')
             
         except Exception as e:
             logger.error("Token verification failed: %s", e)

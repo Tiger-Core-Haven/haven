@@ -32,7 +32,7 @@ def _base_context():
         "app_base_url": app_base_url,
         "brand_logo_url": os.getenv(
             "BRAND_LOGO_URL",
-            f"{app_base_url}/static/branding/havenlogo.png"
+            f"{app_base_url}/static/branding/haven.png"
         ),
         "brand_mark_url": os.getenv(
             "BRAND_MARK_URL",

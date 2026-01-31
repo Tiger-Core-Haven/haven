@@ -29,6 +29,23 @@ def _get_user_email_from_session(session_id):
     user = User.get_by_id(user_id)
     return user.email if user else None
 
+def _summarize_mood(mood_level):
+    if mood_level is None:
+        return "No mood data yet"
+    if mood_level < 33:
+        return "Low energy, heavy mood"
+    if mood_level < 66:
+        return "Mixed energy, thoughtful"
+    return "Bright energy, hopeful"
+
+def _collect_themes(sessions):
+    counts = {}
+    for s in sessions:
+        for item in s.get('stressors', []) or []:
+            counts[item] = counts.get(item, 0) + 1
+    top = sorted(counts.items(), key=lambda x: x[1], reverse=True)[:3]
+    return [name for name, _ in top]
+
 
 def _get_or_create_bot(session_id):
     if session_id in active_bots:
@@ -114,6 +131,13 @@ def match_group():
     # 
     group = GroupMatcher.match_to_group(user_data)
     insight = GroupMatcher.generate_insight_card(user_data, group)
+
+    db.collection('sessions').document(session_id).set({
+        'matched_group_id': group.get('id'),
+        'matched_group_name': group.get('name'),
+        'insight': insight,
+        'matched_at': datetime.utcnow().isoformat()
+    }, merge=True)
 
     # Send Email
     email = _get_user_email_from_session(session_id)
@@ -204,9 +228,18 @@ def confirm_booking():
         'user_id': g.user_uid,
         'time_slot': time_slot,
         'group_name': group_name,
+        'group_id': data.get('group_id'),
         'price': price,
         'created_at': datetime.utcnow().isoformat()
     })
+
+    db.collection('sessions').document(session_id).set({
+        'booking_id': booking_ref.id,
+        'booking_time_slot': time_slot,
+        'booking_created_at': datetime.utcnow().isoformat(),
+        'matched_group_name': group_name,
+        'matched_group_id': data.get('group_id')
+    }, merge=True)
 
     session_date = ""
     session_time = ""
@@ -245,52 +278,55 @@ def confirm_booking():
 @ai_bp.route('/therapist/dashboard/<group_id>', methods=['GET'])
 @token_required
 def therapist_dashboard(group_id):
-    # This is currently mock data. 
-    # In production, query db.collection('bookings').where('group_id', '==', group_id)
-    participants = [
-        {
-            'name': 'Mani',
-            'age': 22,
-            'occupation': 'Student',
-            'primary_complaint': 'work_stress',
-            'duration': 'recent',
-            'severity': 'high',
-            'triggers': ['Failure', 'Not meeting expectations'],
-            'therapeutic_needs': 'Validation on hard work, permission to rest'
-        },
-        {
-            'name': 'Sarah',
-            'age': 26,
-            'occupation': 'Designer',
-            'primary_complaint': 'anxiety',
-            'duration': 'chronic',
-            'severity': 'moderate',
-            'triggers': ['Comparison with peers'],
-            'therapeutic_needs': 'Confidence building, perspective on growth'
-        },
-        {
-            'name': 'Alex',
-            'age': 24,
-            'occupation': 'Engineer',
-            'primary_complaint': 'burnout',
-            'duration': 'recent',
-            'severity': 'high',
-            'triggers': ['Always-on work culture'],
-            'therapeutic_needs': 'Boundary setting strategies, work-life balance'
-        }
-    ]
+    user = User.get_by_id(g.user_uid)
+    if not user or user.role != 'therapist':
+        return jsonify({'error': 'Forbidden'}), 403
+
+    sessions_query = db.collection('sessions').where('matched_group_id', '==', group_id).stream()
+    sessions = []
+    participants = []
+    for doc in sessions_query:
+        data = doc.to_dict()
+        data['id'] = doc.id
+        sessions.append(data)
+
+        user = User.get_by_id(data.get('user_id')) if data.get('user_id') else None
+        extracted = data.get('extracted_data', {}) or {}
+        participants.append({
+            'name': getattr(user, 'display_name', None) or (user.email.split("@")[0] if user and user.email else "Member"),
+            'email': user.email if user else None,
+            'primary_concern': extracted.get('primary_complaint') or 'General wellness',
+            'duration': extracted.get('duration') or 'Unknown',
+            'severity': extracted.get('severity') or 'Moderate',
+            'stressors': data.get('stressors', []),
+            'mood_level': data.get('mood_level'),
+            'conversation_summary': extracted.get('goal') or ''
+        })
 
     group_def = GroupMatcher.ARCHETYPE_GROUPS.get(group_id, GroupMatcher.ARCHETYPE_GROUPS.get('navigators'))
-    
-    # Generate the brief using the LLM (TherapistHandoff class)
-    # This might take 3-5 seconds, so in production, this should be an async job.
+    group_def = dict(group_def or {})
+    group_def['id'] = group_id
+
+    moods = [p.get('mood_level') for p in participants if p.get('mood_level') is not None]
+    avg_mood = round(sum(moods) / len(moods)) if moods else None
+    mood_summary = _summarize_mood(avg_mood)
+    themes = _collect_themes(sessions)
+
     brief = TherapistHandoff.generate_group_brief(group_def, participants)
-    
+    brief.update({
+        'session_count': len(sessions),
+        'themes': themes,
+        'average_mood': avg_mood,
+        'mood_summary': mood_summary
+    })
     return jsonify(brief)
 
 @ai_bp.route('/therapist/download-brief/<group_id>', methods=['GET'])
 @token_required
 def download_brief(group_id):
+    user = User.get_by_id(g.user_uid)
+    if not user or user.role != 'therapist':
+        return jsonify({'error': 'Forbidden'}), 403
     # This would generate the PDF using a library like WeasyPrint or ReportLab
     return jsonify({
         'status': 'success',

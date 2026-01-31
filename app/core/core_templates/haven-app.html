@@ -7,7 +7,7 @@
     <meta name="description" content="Haven is a gentle mental wellness app that uses calm conversation and reflective exercises to match you with supportive small groups.">
     <meta property="og:title" content="Haven — A Warm Space for Your Mind">
     <meta property="og:description" content="A gentle mental wellness app that uses calm conversation and reflective exercises to match you with supportive small groups.">
-    <meta property="og:image" content="{{ url_for('static', filename='branding/havenlogo.png') }}">
+    <meta property="og:image" content="{{ url_for('static', filename='branding/haven.png') }}">
     <meta property="og:type" content="website">
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='branding/haven-mark.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='branding/haven-mark.png') }}">
@@ -25,7 +25,8 @@
     <div class="screen active" id="landing">
         <div class="landing">
             <div class="hero-content reveal">
-                <img class="hero-logo" src="{{ url_for('static', filename='branding/havenlogo.png') }}" alt="Haven logo">
+                <img class="hero-logo" src="{{ url_for('static', filename='branding/haven.png') }}" alt="Haven logo">
+                <h1 class="logo">Haven</h1>
                 <p class="tagline">A warm space for your mind to rest</p>
                 <div class="cta-wrap">
                     <button class="cta-button" onclick="startJourney()">Begin Your Journey</button>
@@ -288,7 +289,7 @@
         <div class="dashboard-container reveal">
             <div class="dashboard-header">
                 <h1>Therapist Dashboard</h1>
-                <p style="color: #718096; font-size: 18px;">Session: The Navigators • Tuesday, 6:00 PM</p>
+                <p id="dashboardSessionSummary" style="color: #718096; font-size: 18px;">Session: The Navigators • Tuesday, 6:00 PM</p>
             </div>
 
             <div class="dashboard-grid">
@@ -296,16 +297,16 @@
                 <div class="dashboard-card">
                     <div class="card-header">
                         <h3 class="card-title">Group Mood Today</h3>
-                        <span style="font-size: 12px; color: #718096;">High Anxiety, Low Energy</span>
+                        <span id="dashboardMoodSummary" style="font-size: 12px; color: #718096;">High Anxiety, Low Energy</span>
                     </div>
-                    <div class="mood-heatmap">
+                    <div class="mood-heatmap" id="dashboardHeatmap">
                         <div class="heatmap-cell" style="background: #f093fb;">😰</div>
                         <div class="heatmap-cell" style="background: #667eea;">😔</div>
                         <div class="heatmap-cell" style="background: #f093fb;">😟</div>
                         <div class="heatmap-cell" style="background: #ed64a6;">😓</div>
                         <div class="heatmap-cell" style="background: #667eea;">😞</div>
                     </div>
-                    <p style="color: #718096; font-size: 14px; margin-top: 15px;">
+                    <p id="dashboardThemes" style="color: #718096; font-size: 14px; margin-top: 15px;">
                         Today's theme: Performance pressure & burnout concerns
                     </p>
                 </div>
@@ -315,7 +316,7 @@
                     <div class="card-header">
                         <h3 class="card-title">Participant Quick Cards</h3>
                     </div>
-                    <ul class="participant-list">
+                    <ul class="participant-list" id="participantList">
                         <li class="participant-item">
                             <div class="participant-name">Mani • 22 • Student</div>
                             <div class="participant-trigger">
@@ -348,7 +349,7 @@
                     <div class="card-header">
                         <h3 class="card-title">Session Preparation</h3>
                     </div>
-                    <p style="color: #718096; line-height: 1.8; margin-bottom: 20px;">
+                    <p id="dashboardBrief" style="color: #718096; line-height: 1.8; margin-bottom: 20px;">
                         This group struggles with high self-expectations and fear of failure. 
                         Common themes include family pressure, career uncertainty, and the belief 
                         that rest equals weakness.
@@ -756,7 +757,85 @@
             }
             showScreen('payment');
         }
-        window.showDashboard = function() { showScreen('dashboard'); }
+
+        async function loadTherapistDashboard() {
+            const token = localStorage.getItem('userToken');
+            if (!token) return;
+            const groupId = matchData?.group?.id || 'navigators';
+            try {
+                const res = await fetch(`/api/chat/therapist/dashboard/${groupId}`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const summary = document.getElementById('dashboardSessionSummary');
+                const moodSummary = document.getElementById('dashboardMoodSummary');
+                const themes = document.getElementById('dashboardThemes');
+                const participantList = document.getElementById('participantList');
+                const briefEl = document.getElementById('dashboardBrief');
+                const heatmap = document.getElementById('dashboardHeatmap');
+
+                const sessionText = `Session: ${data.group_name || data.group_name || 'Group'} • ${data.session_date || ''} ${data.session_time || ''}`.trim();
+                if (summary) summary.textContent = sessionText.replace(/\s+/g, ' ').trim();
+                if (moodSummary) moodSummary.textContent = data.mood_summary || 'Mood overview';
+                if (themes) {
+                    const themeText = (data.themes && data.themes.length)
+                        ? `Today's theme: ${data.themes.join(' • ')}`
+                        : 'Today\'s theme: group reflections';
+                    themes.textContent = themeText;
+                }
+
+                if (heatmap) {
+                    heatmap.innerHTML = '';
+                    const emojis = ['😰', '😔', '😟', '😓', '😞'];
+                    for (let i = 0; i < 5; i += 1) {
+                        const cell = document.createElement('div');
+                        cell.className = 'heatmap-cell';
+                        cell.style.background = i % 2 === 0 ? '#f093fb' : '#667eea';
+                        cell.textContent = emojis[i];
+                        heatmap.appendChild(cell);
+                    }
+                }
+
+                if (participantList) {
+                    participantList.innerHTML = '';
+                    (data.participants || []).forEach((p) => {
+                        const item = document.createElement('li');
+                        item.className = 'participant-item';
+                        const name = document.createElement('div');
+                        name.className = 'participant-name';
+                        name.textContent = p.name || 'Member';
+
+                        const details = document.createElement('div');
+                        details.className = 'participant-trigger';
+                        const stressors = (p.stressors || []).join(', ') || 'None listed';
+                        details.innerHTML = `
+                            <strong>Primary concern:</strong> ${p.primary_concern || 'General wellness'}<br>
+                            <strong>Duration:</strong> ${p.duration || 'Unknown'} • <strong>Severity:</strong> ${p.severity || 'Moderate'}<br>
+                            <strong>Stressors:</strong> ${stressors}
+                        `;
+
+                        item.appendChild(name);
+                        item.appendChild(details);
+                        participantList.appendChild(item);
+                    });
+                }
+
+                if (briefEl) {
+                    briefEl.textContent = (data.group_themes && data.group_themes.length)
+                        ? `This group is showing themes of ${data.group_themes.join(', ')}. Focus on validation, shared experiences, and practical boundary-setting.`
+                        : 'This group is navigating shared stress and needs validation, gentle structure, and supportive reflection.';
+                }
+            } catch (e) {
+                console.error('Dashboard load failed', e);
+            }
+        }
+
+        window.showDashboard = function() {
+            showScreen('dashboard');
+            loadTherapistDashboard();
+        }
 
         window.selectTimeSlot = function(element) {
             document.querySelectorAll('.time-slot').forEach(slot => slot.classList.remove('selected'));
@@ -785,6 +864,7 @@
                         session_id: sessionId,
                         time_slot: selectedTimeSlot,
                         group_name: matchData?.group?.name || 'Your Group',
+                        group_id: matchData?.group?.id || null,
                         price: document.getElementById('schedulePrice')?.textContent || 'AED 120 / session'
                     })
                 });

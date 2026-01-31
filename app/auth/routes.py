@@ -16,14 +16,16 @@ def sync_user():
     """
     uid = g.user_uid
     email = g.user_email
+    display_name = getattr(g, "user_name", None)
+    photo_url = getattr(g, "user_picture", None)
     
     user = User.get_by_id(uid)
     
     if not user:
-        user = User(uid=uid, email=email, role='client')
+        user = User(uid=uid, email=email, role='client', display_name=display_name, photo_url=photo_url)
         user.save()
         if email:
-            display_name = email.split("@")[0]
+            display_name = display_name or email.split("@")[0]
             app_base_url = os.getenv("APP_BASE_URL", "http://localhost:5000")
             send_email(
                 to_email=email,
@@ -38,6 +40,12 @@ def sync_user():
                 tags=[{"name": "type", "value": "welcome"}]
             )
         return jsonify({'message': 'User created', 'role': 'client'})
+
+    if display_name or photo_url:
+        user.display_name = display_name or user.display_name
+        user.photo_url = photo_url or user.photo_url
+        user.save()
+    user.touch_last_login()
 
     logger.info("User already exists, skipping welcome email uid=%s", uid)
     return jsonify({

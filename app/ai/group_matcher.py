@@ -56,8 +56,13 @@ class GroupMatcher:
             scores[group_id] = score
 
         if max(scores.values()) > 0:
-            return GroupMatcher.ARCHETYPE_GROUPS[max(scores, key=scores.get)]
-        return GroupMatcher.ARCHETYPE_GROUPS['navigators']
+            best_id = max(scores, key=scores.get)
+        else:
+            best_id = 'navigators'
+
+        group = dict(GroupMatcher.ARCHETYPE_GROUPS[best_id])
+        group['id'] = best_id
+        return group
 
     @staticmethod
     def generate_insight_card(user_data, group):
