@@ -1,13 +1,16 @@
 import os
+import json
 from datetime import datetime
 from flask import request, jsonify, g
 from app.auth.utils import token_required
 from app.models import User, ChatSession
-from app.ai.chat_engine import ChatbotEngine
+
+from app.ai.chat_engine import ChatbotEngine 
 from app.ai.group_matcher import GroupMatcher, TherapistHandoff
 from app.extensions import db
 from app.ai import ai_bp
 from app.email.service import send_email
+
 
 
 active_bots = {}
@@ -26,12 +29,33 @@ def _get_user_email_from_session(session_id):
     user = User.get_by_id(user_id)
     return user.email if user else None
 
+
+def _get_or_create_bot(session_id):
+    if session_id in active_bots:
+        return active_bots[session_id]
+    
+    bot = ChatbotEngine()
+    
+    try:
+        past_messages = ChatSession.get_messages(session_id) 
+        for msg in past_messages:
+            role = "user" if msg['role'] == 'user' else "assistant"
+            bot.conversation_history.append({
+                "role": role,
+                "content": [{"text": msg['content']}]
+            })
+    except Exception as e:
+        print(f"Could not rehydrate history: {e}")
+
+    active_bots[session_id] = bot
+    return bot
+
 @ai_bp.route('/start', methods=['POST'])
 @token_required
 def start_chat():
     uid = g.user_uid
-
     session_id = ChatSession.create(uid)
+
 
     active_bots[session_id] = ChatbotEngine()
     
@@ -46,26 +70,21 @@ def chat_message():
     data = request.json
     session_id = data.get('session_id')
     user_msg = data.get('message')
-    turn_count = data.get('turn_count', 1)
     
-    if session_id not in active_bots:
-
-        active_bots[session_id] = ChatbotEngine()
+    chatbot = _get_or_create_bot(session_id)
     
-    chatbot = active_bots[session_id]
+    response = chatbot.generate_response(user_msg)
     
-
-    response = chatbot.generate_response(user_msg, turn_count)
-    
-
+    # save to db
     ChatSession.add_message(session_id, {'role': 'user', 'content': user_msg})
     ChatSession.add_message(session_id, {'role': 'bot', 'content': response['message']})
     
-
-    if 'extracted_data' in response:
-
+    # check for extracted data
+    if response.get('ready_for_next_phase') and response.get('extracted_data'):
+        # Save the extraction to the DB immediately
         db.collection('sessions').document(session_id).update({
-            'extracted_data': response['extracted_data']
+            'extracted_data': response['extracted_data'],
+            'status': 'ready_to_match'
         })
 
     return jsonify(response)
@@ -75,22 +94,28 @@ def chat_message():
 def match_group():
     data = request.json
     session_id = data.get('session_id')
+    
     if not session_id:
         return jsonify({'error': 'session_id is required'}), 400
     
+    doc = _get_session_doc(session_id)
+    if not doc:
+        return jsonify({'error': 'Invalid session'}), 400
+        
+    session_data = doc.to_dict()
+    user_data = session_data.get('extracted_data', {})
 
-    if session_id in active_bots:
-        user_data = active_bots[session_id].slots
-    else:
+    if not user_data and session_id in active_bots:
+        pass
 
-        doc = _get_session_doc(session_id)
-        if not doc:
-            return jsonify({'error': 'Invalid session'}), 400
-        user_data = doc.to_dict().get('extracted_data', {})
+    if not user_data:
+        return jsonify({'error': 'No clinical data extracted yet. Chat more.'}), 400
 
+    # 
     group = GroupMatcher.match_to_group(user_data)
     insight = GroupMatcher.generate_insight_card(user_data, group)
 
+    # Send Email
     email = _get_user_email_from_session(session_id)
     if email:
         app_base_url = os.getenv("APP_BASE_URL", "http://localhost:5000")
@@ -107,7 +132,7 @@ def match_group():
                 "group_emoji": group.get("emoji", ""),
                 "insight_title": insight["title"],
                 "insight_description": insight["description"],
-                "cta_url": app_base_url,
+                "cta_url": f"{app_base_url}/dashboard",
                 "cta_label": "see your match"
             },
             tags=[{"name": "type", "value": "group_match"}]
@@ -125,9 +150,7 @@ def bubble_assessment():
     if not session_id:
         return jsonify({'error': 'session_id is required'}), 400
 
-    if session_id in active_bots:
-        active_bots[session_id].slots['stressors'] = selected_bubbles
-
+    # Update DB
     db.collection('sessions').document(session_id).set({
         'stressors': selected_bubbles
     }, merge=True)
@@ -144,9 +167,7 @@ def mood_assessment():
     if not session_id:
         return jsonify({'error': 'session_id is required'}), 400
 
-    if session_id in active_bots:
-        active_bots[session_id].slots['mood_level'] = mood_level
-
+    # Update DB
     db.collection('sessions').document(session_id).set({
         'mood_level': mood_level
     }, merge=True)
@@ -156,6 +177,7 @@ def mood_assessment():
 @ai_bp.route('/scheduling/available-slots', methods=['GET'])
 @token_required
 def available_slots():
+    # In a real app, this would query a Calendar API
     slots = [
         {'day': 'Tuesday', 'time': '6:00 PM', 'available': True},
         {'day': 'Wednesday', 'time': '7:00 PM', 'available': True},
@@ -208,7 +230,7 @@ def confirm_booking():
                 "session_time": session_time,
                 "price": price,
                 "booking_id": booking_ref.id,
-                "cta_url": app_base_url,
+                "cta_url": f"{app_base_url}/session/{booking_ref.id}",
                 "cta_label": "view your session"
             },
             tags=[{"name": "type", "value": "booking_confirmed"}]
@@ -223,6 +245,8 @@ def confirm_booking():
 @ai_bp.route('/therapist/dashboard/<group_id>', methods=['GET'])
 @token_required
 def therapist_dashboard(group_id):
+    # This is currently mock data. 
+    # In production, query db.collection('bookings').where('group_id', '==', group_id)
     participants = [
         {
             'name': 'Mani',
@@ -256,13 +280,18 @@ def therapist_dashboard(group_id):
         }
     ]
 
-    group = GroupMatcher.ARCHETYPE_GROUPS.get(group_id, GroupMatcher.ARCHETYPE_GROUPS['navigators'])
-    brief = TherapistHandoff.generate_group_brief(group, participants)
+    group_def = GroupMatcher.ARCHETYPE_GROUPS.get(group_id, GroupMatcher.ARCHETYPE_GROUPS.get('navigators'))
+    
+    # Generate the brief using the LLM (TherapistHandoff class)
+    # This might take 3-5 seconds, so in production, this should be an async job.
+    brief = TherapistHandoff.generate_group_brief(group_def, participants)
+    
     return jsonify(brief)
 
 @ai_bp.route('/therapist/download-brief/<group_id>', methods=['GET'])
 @token_required
 def download_brief(group_id):
+    # This would generate the PDF using a library like WeasyPrint or ReportLab
     return jsonify({
         'status': 'success',
         'message': 'PDF generation would happen here',

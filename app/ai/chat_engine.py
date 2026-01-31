@@ -1,92 +1,101 @@
-import random
+import boto3
+import json
+import re
+
+# Initialize Bedrock Client
+bedrock_client = boto3.client(
+    service_name='bedrock-runtime', 
+    region_name='us-east-1' 
+)
 
 class ChatbotEngine:
     """
-    Warm, empathetic chatbot logic
+    Therapist Chatbot powered by AWS Bedrock (Claude 3.5 Sonnet)
     """
     def __init__(self):
-        self.slots = {
-            'primary_complaint': None,
-            'duration': None,
-            'severity': None,
-            'goal': None
-        }
-        self.confidence_scores = {
-            'primary_complaint': 0, 'duration': 0, 'severity': 0, 'goal': 0
-        }
+        # Using Sonnet for better adherence to complex "consent" instructions
+        self.model_id = "us.anthropic.claude-3-5-sonnet-20240620-v1:0" 
         self.conversation_history = []
         
-    def analyze_message(self, user_message):
-        message_lower = user_message.lower()
+        self.system_prompt = """
+        You are a warm, empathetic intake facilitator for 'Haven', a digital group therapy platform.
+        Your goal is to gather insights about the user to match them with a support group.
 
-        if any(word in message_lower for word in ['anxious', 'anxiety', 'worried', 'nervous']):
-            self.slots['primary_complaint'] = 'anxiety'
-            self.confidence_scores['primary_complaint'] = 0.8
-        elif any(word in message_lower for word in ['stressed', 'pressure', 'overwhelmed', 'busy']):
-            self.slots['primary_complaint'] = 'stress'
-            self.confidence_scores['primary_complaint'] = 0.8
-        elif any(word in message_lower for word in ['sad', 'down', 'empty']):
-            self.slots['primary_complaint'] = 'depression'
-            self.confidence_scores['primary_complaint'] = 0.8
-        elif any(word in message_lower for word in ['work', 'job', 'career', 'boss']):
-            self.slots['primary_complaint'] = 'work_stress'
-            self.confidence_scores['primary_complaint'] = 0.7
-
-        if any(word in message_lower for word in ['months', 'years', 'long time', 'always']):
-            self.slots['duration'] = 'chronic'
-            self.confidence_scores['duration'] = 0.7
-        elif any(word in message_lower for word in ['recently', 'lately', 'past week', 'few days']):
-            self.slots['duration'] = 'recent'
-            self.confidence_scores['duration'] = 0.7
-
-        severe_words = ['really', 'very', 'extremely', "can't", 'unbearable']
-        if any(word in message_lower for word in severe_words):
-            self.slots['severity'] = 'high'
-            self.confidence_scores['severity'] = 0.6
-
-        return self.get_overall_confidence()
-    
-    def get_overall_confidence(self):
-        return sum(self.confidence_scores.values()) / 4
-    
-    def generate_response(self, user_message, turn_count):
-        self.analyze_message(user_message)
-        confidence = self.get_overall_confidence()
+        YOUR PROCESS (Must be followed in order):
+        1. EXPLORE: Ask gentle, open-ended questions to understand their:
+           - Primary struggle (Anxiety, Burnout, Grief, etc.)
+           - Duration (How long has this been happening?)
+           - Severity (Impact on daily life)
+           - Goal (Venting, strategies, or connection?)
         
-        responses = {
-            1: [
-                "that sounds really heavy. i'm sorry you're dealing with that. how long has this been going on?",
-                "i hear you. that must be exhausting to carry around. has it been like this for a while?",
-                "thank you for trusting me with this. how long have you been feeling this way?"
-            ],
-            2: [
-                "that makes sense. it's hard when things pile up like that. on a scale of 1-10, how overwhelming does it feel right now?",
-                "i can imagine how draining that must be. when you wake up in the morning, how heavy does it feel?",
-                "i appreciate you sharing that. what would a good day look like for you?"
-            ],
-            3: [
-                "i'm starting to see the picture. are you looking for someone to just listen, or do you want to actively work on this?",
-                "thank you for being so open. do you feel like you need space to vent, or are you ready to explore solutions?",
-                "i'm glad you're here. what do you think you need most right now—to be heard, or to find a path forward?"
-            ],
-            4: [
-                "i think i really understand where you're coming from now. you're not alone in this—there are others who feel exactly what you're feeling. would you like me to connect you with them?",
-                "thank you for trusting me with all of this. i have an idea of a group that deals with exactly what you're going through. want to see?",
-                "i've been listening carefully, and i think i know some people who would really get you. ready to meet your tribe?"
-            ]
-        }
+        2. SUMMARIZE & CONSENT (Crucial):
+           - Once you have a clear picture, DO NOT immediately end the session.
+           - Instead, summarize what you have heard in a validating way.
+           - Explicitly ask: "Does that sound about right? If you're ready, I can look for a group that matches this profile."
         
-        if confidence > 0.8 or turn_count >= 4:
-            msg = responses[4][random.randint(0, len(responses[4]) - 1)]
-            return {
-                'message': msg,
-                'ready_for_next_phase': True,
-                'extracted_data': self.slots
+        3. FINALIZE:
+           - ONLY set "ready_for_next_phase" to TRUE if the user explicitly confirms (e.g., "Yes", "Go ahead").
+           - If they hesitate, continue listening.
+
+        OUTPUT RULES:
+        - You must output ONLY valid JSON.
+        - Do not include markdown formatting (like ```json).
+        - Structure:
+        {
+            "message": "Your conversational response here (lowercase, warm, human-like)",
+            "ready_for_next_phase": boolean,
+            "extracted_data": {
+                "primary_complaint": "summary string or null",
+                "duration": "summary string or null",
+                "severity": "low/med/high or null",
+                "goal": "summary string or null"
             }
-        
-        turn = min(turn_count, 3)
-        msg = responses[turn][random.randint(0, len(responses[turn]) - 1)]
-        return {
-            'message': msg,
-            'ready_for_next_phase': False
         }
+        """
+
+    def generate_response(self, user_message):
+        self.conversation_history.append({
+            "role": "user",
+            "content": [{"text": user_message}]
+        })
+
+        try:
+            response = bedrock_client.converse(
+                modelId=self.model_id,
+                messages=self.conversation_history,
+                system=[{"text": self.system_prompt}],
+                inferenceConfig={"temperature": 0.5, "maxTokens": 512}
+            )
+
+            ai_response_text = response['output']['message']['content'][0]['text']
+            
+            # Robust JSON extraction using Regex
+            json_match = re.search(r'\{.*\}', ai_response_text, re.DOTALL)
+            
+            if json_match:
+                clean_json = json_match.group(0)
+                parsed_data = json.loads(clean_json)
+            else:
+                # Fallback if the model is chatty but valid
+                # We attempt to treat the whole text as the message if JSON fails
+                parsed_data = {
+                    "message": ai_response_text,
+                    "ready_for_next_phase": False,
+                    "extracted_data": {}
+                }
+
+            # Save assistant response to history
+            self.conversation_history.append({
+                "role": "assistant",
+                "content": [{"text": parsed_data['message']}]
+            })
+
+            return parsed_data
+
+        except Exception as e:
+            print(f"Bedrock Error: {e}")
+            return {
+                "message": "i'm having a little trouble connecting right now. could you say that again?",
+                "ready_for_next_phase": False,
+                "extracted_data": {}
+            }
