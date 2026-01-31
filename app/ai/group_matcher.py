@@ -1,16 +1,18 @@
 import os
 import json
+import time
 from datetime import datetime, timedelta
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
 from typing import List, Literal, Optional
+from app.ai.selected_model import SELECTED_MODEL
 
 # --- Configuration ---
 # Make sure to set GOOGLE_API_KEY in your .env
 api_key = os.getenv("GOOGLE_API_KEY", "").strip()
 client = genai.Client(api_key=api_key)
-MODEL_NAME = "gemini-2.5-flash-lite" 
+MODEL_NAME = SELECTED_MODEL
 
 class InsightCard(BaseModel):
     selected_group_id: Literal['navigators', 'anchors', 'mirrors', 'balancers', 'explorers'] = Field(

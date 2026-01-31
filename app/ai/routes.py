@@ -129,18 +129,11 @@ def match_group():
         return jsonify({'error': 'No clinical data extracted yet. Chat more.'}), 400
 
     group, insight_object = GroupMatcher.match_to_group(user_data)
+    
+    # 2. Convert Pydantic object to Dict for JSON serialization
+    insight = insight_object.model_dump()
 
-    # Convert Pydantic object to dict for JSON serialization
-    insight_dict = insight_object.model_dump()
-
-    db.collection('sessions').document(session_id).set({
-        'matched_group_id': group.get('id'),
-        'matched_group_name': group.get('name'),
-        'insight': insight,
-        'matched_at': datetime.utcnow().isoformat()
-    }, merge=True)
-
-    # Send Email
+    # 3. Send Email
     email = _get_user_email_from_session(session_id)
     if email:
         app_base_url = os.getenv("APP_BASE_URL", "http://localhost:5000")
@@ -156,9 +149,9 @@ def match_group():
                 "group_description": group["description"],
                 "group_emoji": group.get("emoji", ""),
                 
-                # Updated to use the AI-generated insight
-                "insight_title": insight_dict["title"],
-                "insight_description": insight_dict["description"],
+                # Updated fields from AI insight
+                "insight_title": insight["title"],
+                "insight_description": insight["description"],
                 
                 "cta_url": f"{app_base_url}/dashboard",
                 "cta_label": "see your match"
@@ -166,7 +159,7 @@ def match_group():
             tags=[{"name": "type", "value": "group_match"}]
         )
     
-    return jsonify({'group': group, 'insight': insight_dict})
+    return jsonify({'group': group, 'insight': insight})
 
 @ai_bp.route('/assessment/bubble', methods=['POST'])
 @token_required

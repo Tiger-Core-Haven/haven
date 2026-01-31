@@ -6,6 +6,7 @@ from typing import Optional, Literal
 from google import genai
 from pydantic import BaseModel, Field, ValidationError
 
+from app.ai.selected_model import SELECTED_MODEL
 
 class ExtractedData(BaseModel):
     primary_complaint: Optional[str] = Field(None, description="Main struggle (e.g. anxiety, burnout)")
@@ -21,8 +22,8 @@ class TherapyResponse(BaseModel):
 
 
 class ChatbotEngine:
-    """
-    Therapist Chatbot powered by Google Gemini 2.5 Flash Lite
+    f"""
+    Therapist Chatbot powered by Google ({SELECTED_MODEL})
     (Uses Native Pydantic Structured Outputs)
     """
     def __init__(self):
@@ -31,7 +32,7 @@ class ChatbotEngine:
             raise ValueError("GOOGLE_API_KEY not found")
 
         self.client = genai.Client(api_key=api_key.strip())
-        self.model_id = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+        self.model_id = os.getenv("GEMINI_MODEL", SELECTED_MODEL)
         self.conversation_history = []
 
         self.system_prompt = (
