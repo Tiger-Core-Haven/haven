@@ -20,6 +20,14 @@
             <div class="floating-orb orb-2"></div>
             <div class="floating-orb orb-3"></div>
         </div>
+        <header class="auth-bar">
+            <div class="auth-actions">
+                <button class="auth-button ghost" data-auth="guest" onclick="startSignup()">Sign up</button>
+                <button class="auth-button" data-auth="guest" onclick="startLogin()">Log in</button>
+                <span class="auth-name" id="authUserName" data-auth="user"></span>
+                <button class="auth-button ghost" data-auth="user" onclick="logout()">Log out</button>
+            </div>
+        </header>
 
         <!-- Landing Screen -->
         <div class="screen active" id="landing">
@@ -380,6 +388,7 @@
                 getAuth,
                 GoogleAuthProvider,
                 signInWithPopup,
+                signOut,
                 onAuthStateChanged,
                 setPersistence,
                 browserLocalPersistence
@@ -406,6 +415,7 @@
             let chatTurnCount = 1;
             let sessionStarted = false;
             let authInFlight = false;
+            const authNameEl = document.getElementById('authUserName');
 
             setPersistence(auth, browserLocalPersistence).catch((error) => {
                 console.warn("Auth persistence error:", error);
@@ -478,17 +488,46 @@
                 }
             }
 
+            function updateAuthUI(user) {
+                document.querySelectorAll('[data-auth="guest"]').forEach((el) => {
+                    el.style.display = user ? 'none' : 'inline-flex';
+                });
+                document.querySelectorAll('[data-auth="user"]').forEach((el) => {
+                    el.style.display = user ? 'inline-flex' : 'none';
+                });
+                if (authNameEl) {
+                    authNameEl.textContent = user
+                        ? (user.displayName || user.email || 'Signed in')
+                        : '';
+                }
+            }
+
+            async function getAuthTokenOrLogin() {
+                const existing = localStorage.getItem('userToken');
+                if (existing) 
+                    return existing;
+                if (auth.currentUser) {
+                    await ensureBackendSession(auth.currentUser);
+                    return localStorage.getItem('userToken');
+                }
+                await window.startLogin();
+                return localStorage.getItem('userToken');
+            }
+
             onAuthStateChanged(auth, async (user) => {
+                updateAuthUI(user);
                 if (user && !sessionStarted) {
                     try {
                         await ensureBackendSession(user);
                     } catch (e) {
                         console.error("Auto login failed", e);
                     }
+                } else if (!user) {
+                    sessionStarted = false;
                 }
             });
 
-            window.startJourney = async function () {
+            window.startLogin = async function () {
                 try {
                     console.log("Starting login...");
                     if (auth.currentUser) {
@@ -505,6 +544,31 @@
                 } finally {
                     authInFlight = false;
                 }
+            };
+
+            window.startSignup = async function () {
+                await window.startLogin();
+            };
+
+            window.logout = async function () {
+                try {
+                    await signOut(auth);
+                } catch (e) {
+                    console.error("Logout failed", e);
+                } finally {
+                    localStorage.removeItem('userToken');
+                    localStorage.removeItem('session_id');
+                    sessionStarted = false;
+                    matchData = null;
+                    selectedTimeSlot = null;
+                    chatTurnCount = 1;
+                    showScreen('landing');
+                    updateAuthUI(null);
+                }
+            };
+
+            window.startJourney = async function () {
+                await window.startLogin();
             };
 
             async function startChatSession(token) {
@@ -539,7 +603,7 @@
                 const message = input
                     .value
                     .trim();
-                const token = localStorage.getItem('userToken');
+                const token = await getAuthTokenOrLogin();
                 const sessionId = localStorage.getItem('session_id');
 
                 if (message && token) {
@@ -804,11 +868,13 @@
             }
 
             window.finishBubbleGame = async function () {
+                await getAuthTokenOrLogin();
                 await sendBubbleAssessment();
                 showScreen('moodGame');
             }
 
             window.finishMoodGame = async function () {
+                await getAuthTokenOrLogin();
                 await sendMoodAssessment();
                 matchData = await fetchMatch();
                 if (matchData) 
@@ -831,7 +897,7 @@
             }
 
             async function loadTherapistDashboard() {
-                const token = localStorage.getItem('userToken');
+                const token = await getAuthTokenOrLogin();
                 if (!token) 
                     return;
                 const groupId = matchData
@@ -939,7 +1005,7 @@
             }
 
             window.confirmBooking = async function () {
-                const token = localStorage.getItem('userToken');
+                const token = await getAuthTokenOrLogin();
                 const sessionId = localStorage.getItem('session_id');
                 if (!token || !sessionId || !selectedTimeSlot) {
                     alert('Please choose a time slot first.');
@@ -977,7 +1043,7 @@
             }
 
             window.downloadBrief = async function () {
-                const token = localStorage.getItem('userToken');
+                const token = await getAuthTokenOrLogin();
                 if (!token) 
                     return;
                 try {
