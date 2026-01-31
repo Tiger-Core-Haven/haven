@@ -111,9 +111,10 @@ def match_group():
     if not user_data:
         return jsonify({'error': 'No clinical data extracted yet. Chat more.'}), 400
 
-    # 
-    group = GroupMatcher.match_to_group(user_data)
-    insight = GroupMatcher.generate_insight_card(user_data, group)
+    group, insight_object = GroupMatcher.match_to_group(user_data)
+
+    # Convert Pydantic object to dict for JSON serialization
+    insight_dict = insight_object.model_dump()
 
     # Send Email
     email = _get_user_email_from_session(session_id)
@@ -130,15 +131,18 @@ def match_group():
                 "group_capacity": group["capacity"],
                 "group_description": group["description"],
                 "group_emoji": group.get("emoji", ""),
-                "insight_title": insight["title"],
-                "insight_description": insight["description"],
+                
+                # Updated to use the AI-generated insight
+                "insight_title": insight_dict["title"],
+                "insight_description": insight_dict["description"],
+                
                 "cta_url": f"{app_base_url}/dashboard",
                 "cta_label": "see your match"
             },
             tags=[{"name": "type", "value": "group_match"}]
         )
     
-    return jsonify({'group': group, 'insight': insight})
+    return jsonify({'group': group, 'insight': insight_dict})
 
 @ai_bp.route('/assessment/bubble', methods=['POST'])
 @token_required

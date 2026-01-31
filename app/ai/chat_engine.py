@@ -17,7 +17,7 @@ class TherapyResponse(BaseModel):
 
 class ChatbotEngine:
     """
-    Therapist Chatbot powered by Google Gemini 1.5 Flash
+    Therapist Chatbot powered by Google Gemini 2.5 Flash
     (Uses Native Pydantic Structured Outputs)
     """
     def __init__(self):
