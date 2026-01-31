@@ -1,7 +1,5 @@
 import os
-import json
 from datetime import datetime, timedelta
-from urllib.parse import urlencode
 from flask import request, jsonify, g, Response
 from google.cloud import firestore
 from app.auth.utils import token_required

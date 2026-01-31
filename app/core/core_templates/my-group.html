@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>My Group • Haven</title>
+        <meta name="description" content="View your Haven group details and what you've shared.">
+        <meta property="og:title" content="My Group • Haven">
+        <meta property="og:description" content="View your Haven group details and next steps.">
+        <meta property="og:image" content="{{ url_for('static', filename='branding/haven.png') }}">
+        <meta property="og:type" content="website">
+        <link rel="icon" type="image/png" href="{{ url_for('static', filename='branding/haven-mark.png') }}">
+        <link rel="apple-touch-icon" href="{{ url_for('static', filename='branding/haven-mark.png') }}">
+        <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Space+Mono:wght@400;700&family=DM+Serif+Display&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    </head>
+    <body>
+        <div class="animated-bg">
+            <div class="floating-orb orb-1"></div>
+            <div class="floating-orb orb-2"></div>
+            <div class="floating-orb orb-3"></div>
+        </div>
+        <header class="auth-bar">
+            <div class="auth-actions">
+                <button class="auth-button ghost" data-auth="guest" onclick="startSignup()">Sign up</button>
+                <button class="auth-button" data-auth="guest" onclick="startLogin()">Log in</button>
+                <button class="auth-button ghost" data-auth="therapist" onclick="goDashboard()">Therapist Dashboard</button>
+                <a class="auth-button ghost" data-auth="user" href="/my-group">My Group</a>
+                <span class="auth-name" id="authUserName" data-auth="user"></span>
+                <button class="auth-button ghost" data-auth="user" onclick="logout()">Log out</button>
+            </div>
+        </header>
+
+        <div class="summary-container">
+            <div class="summary-card">
+                <h2 class="summary-title">My Group</h2>
+                <p class="summary-subtitle" id="summaryStatus">Log in to view your group details.</p>
+                <div class="summary-grid" id="summaryGrid" style="display: none;">
+                    <div class="summary-panel">
+                        <h3>Session details</h3>
+                        <p class="summary-line" id="clientGroupName">Group: —</p>
+                        <p class="summary-line" id="clientSessionTime">Time: —</p>
+                        <p class="summary-line" id="clientGroupDescription"></p>
+                        <a class="btn-secondary" id="clientCalendarLink" href="#" target="_blank" rel="noopener">Add to calendar</a>
+                    </div>
+                    <div class="summary-panel">
+                        <h3>What you shared</h3>
+                        <p class="summary-line" id="clientMoodSummary"></p>
+                        <ul class="summary-list" id="clientStressors"></ul>
+                    </div>
+                    <div class="summary-panel">
+                        <h3>Primary concern</h3>
+                        <p class="summary-line" id="clientPrimaryConcern">—</p>
+                        <h3>Goal</h3>
+                        <p class="summary-line" id="clientGoal">—</p>
+                        <p class="summary-line" id="clientDurationSeverity"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script type="module">
+            import {initializeApp} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+            import {
+                getAuth,
+                GoogleAuthProvider,
+                signInWithPopup,
+                signOut,
+                onAuthStateChanged,
+                setPersistence,
+                browserLocalPersistence
+            } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+            const firebaseConfig = {
+                apiKey: "AIzaSyAjhmcZmcuui6rD5wTQDzUnXhgugkck3cw",
+                authDomain: "haven-app-4da45.firebaseapp.com",
+                projectId: "haven-app-4da45",
+                storageBucket: "haven-app-4da45.firebasestorage.app",
+                messagingSenderId: "957828596125",
+                appId: "1:957828596125:web:d70977a8d8526ec0826f74",
+                measurementId: "G-G7X8VSFF86"
+            };
+
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const provider = new GoogleAuthProvider();
+            const authNameEl = document.getElementById('authUserName');
+            const summaryStatus = document.getElementById('summaryStatus');
+            const summaryGrid = document.getElementById('summaryGrid');
+            let currentRole = localStorage.getItem('userRole') || null;
+
+            setPersistence(auth, browserLocalPersistence).catch((error) => {
+                console.warn("Auth persistence error:", error);
+            });
+
+            function updateAuthUI(user, roleOverride = null) {
+                const role = roleOverride || currentRole;
+                document.querySelectorAll('[data-auth="guest"]').forEach((el) => {
+                    el.style.display = user ? 'none' : 'inline-flex';
+                });
+                document.querySelectorAll('[data-auth="user"]').forEach((el) => {
+                    el.style.display = user ? 'inline-flex' : 'none';
+                });
+                document.querySelectorAll('[data-auth="therapist"]').forEach((el) => {
+                    el.style.display = user && role === 'therapist' ? 'inline-flex' : 'none';
+                });
+                if (authNameEl) {
+                    authNameEl.textContent = user
+                        ? (user.displayName || user.email || 'Signed in')
+                        : '';
+                }
+            }
+
+            async function ensureBackendSession(user) {
+                const token = await user.getIdToken(true);
+                localStorage.setItem('userToken', token);
+                const response = await fetch('/api/auth/sync', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (response.ok) {
+                    const payload = await response.json();
+                    currentRole = payload.role || null;
+                    if (currentRole) {
+                        localStorage.setItem('userRole', currentRole);
+                    } else {
+                        localStorage.removeItem('userRole');
+                    }
+                    updateAuthUI(user, currentRole);
+                }
+            }
+
+            async function loadMyGroup() {
+                const token = localStorage.getItem('userToken');
+                if (!token) 
+                    return;
+                summaryStatus.textContent = "Loading your latest session...";
+                summaryGrid.style.display = 'none';
+                try {
+                    const res = await fetch('/api/chat/session/summary/latest', {
+                        headers: {
+                            'Authorization': 'Bearer ' + token
+                        }
+                    });
+                    if (!res.ok) {
+                        summaryStatus.textContent = "No session data yet. Complete the onboarding to see your group.";
+                        return;
+                    }
+                    const data = await res.json();
+                    renderSummary(data);
+                } catch (e) {
+                    console.error('Failed to load summary', e);
+                    summaryStatus.textContent = "We couldn't load your summary right now.";
+                }
+            }
+
+            function renderSummary(data) {
+                const group = data.group || {};
+                const groupName = group.name || 'Your Group';
+                const groupDesc = group.description || '';
+
+                const sessionLine = data.session_time
+                    ? `${data.session_date} · ${data.session_time}`
+                    : (data.session_date || 'Scheduled session');
+
+                const groupEl = document.getElementById('clientGroupName');
+                const timeEl = document.getElementById('clientSessionTime');
+                const descEl = document.getElementById('clientGroupDescription');
+                const moodEl = document.getElementById('clientMoodSummary');
+                const stressorList = document.getElementById('clientStressors');
+                const primaryEl = document.getElementById('clientPrimaryConcern');
+                const goalEl = document.getElementById('clientGoal');
+                const durationEl = document.getElementById('clientDurationSeverity');
+                const calendarLink = document.getElementById('clientCalendarLink');
+
+                if (groupEl) 
+                    groupEl.textContent = `Group: ${groupName}`;
+                if (timeEl) 
+                    timeEl.textContent = `Time: ${sessionLine}`;
+                if (descEl && groupDesc) 
+                    descEl.textContent = `Focus: ${groupDesc}`;
+                if (moodEl) 
+                    moodEl.textContent = data.mood_summary
+                        ? `Mood: ${data.mood_summary}`
+                        : '';
+
+                if (stressorList) {
+                    stressorList.innerHTML = '';
+                    const stressors = data.stressors || [];
+                    if (!stressors.length) {
+                        const item = document.createElement('li');
+                        item.textContent = 'No stressors captured yet.';
+                        stressorList.appendChild(item);
+                    } else {
+                        stressors.forEach((s) => {
+                            const item = document.createElement('li');
+                            item.textContent = s;
+                            stressorList.appendChild(item);
+                        });
+                    }
+                }
+
+                const extracted = data.extracted_data || {};
+                if (primaryEl) 
+                    primaryEl.textContent = extracted.primary_complaint || '—';
+                if (goalEl) 
+                    goalEl.textContent = extracted.goal || '—';
+                if (durationEl) {
+                    const duration = extracted.duration || 'Unknown';
+                    const severity = extracted.severity || 'Moderate';
+                    durationEl.textContent = `Duration: ${duration} • Severity: ${severity}`;
+                }
+
+                if (calendarLink) {
+                    if (data.calendar_url) {
+                        calendarLink.href = data.calendar_url;
+                        calendarLink.style.display = 'inline-flex';
+                    } else {
+                        calendarLink.style.display = 'none';
+                    }
+                }
+
+                summaryStatus.textContent = "You're all set for your group.";
+                summaryGrid.style.display = 'grid';
+            }
+
+            window.startLogin = async function () {
+                try {
+                    if (auth.currentUser) {
+                        await ensureBackendSession(auth.currentUser);
+                        await loadMyGroup();
+                        return;
+                    }
+                    const result = await signInWithPopup(auth, provider);
+                    await ensureBackendSession(result.user);
+                    await loadMyGroup();
+                } catch (error) {
+                    console.error("Login Error:", error);
+                    alert("Login failed: " + error.message);
+                }
+            };
+
+            window.startSignup = async function () {
+                await window.startLogin();
+            };
+
+            window.logout = async function () {
+                try {
+                    await signOut(auth);
+                } catch (e) {
+                    console.error("Logout failed", e);
+                } finally {
+                    localStorage.removeItem('userToken');
+                    localStorage.removeItem('session_id');
+                    localStorage.removeItem('userRole');
+                    currentRole = null;
+                    updateAuthUI(null);
+                    summaryStatus.textContent = "Log in to view your group details.";
+                    summaryGrid.style.display = 'none';
+                }
+            };
+
+            window.goDashboard = function () {
+                if (currentRole !== 'therapist') {
+                    alert('Therapist dashboard access requires a therapist account.');
+                    return;
+                }
+                window.location.href = '/';
+            };
+
+            onAuthStateChanged(auth, async (user) => {
+                updateAuthUI(user);
+                if (user) {
+                    await ensureBackendSession(user);
+                    await loadMyGroup();
+                }
+            });
+        </script>
+    </body>
+</html>

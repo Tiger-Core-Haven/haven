@@ -74,6 +74,7 @@ body {
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 10px 24px rgba(102, 126, 234, 0.25);
+    text-decoration: none;
 }
 
 .auth-button.ghost {

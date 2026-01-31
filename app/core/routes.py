@@ -12,3 +12,7 @@ def privacy():
 @core_bp.route('/terms')
 def terms():
     return render_template('terms.html')
+
+@core_bp.route('/my-group')
+def my_group():
+    return render_template('my-group.html')

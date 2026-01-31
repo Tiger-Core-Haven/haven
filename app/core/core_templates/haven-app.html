@@ -1022,14 +1022,24 @@
             async function loadClientSummary() {
                 const token = await getAuthTokenOrLogin();
                 const sessionId = localStorage.getItem('session_id');
-                if (!token || !sessionId) 
+                if (!token) 
                     return;
                 try {
-                    const res = await fetch(`/api/chat/session/summary/${sessionId}`, {
-                        headers: {
-                            'Authorization': 'Bearer ' + token
-                        }
-                    });
+                    let res = null;
+                    if (sessionId) {
+                        res = await fetch(`/api/chat/session/summary/${sessionId}`, {
+                            headers: {
+                                'Authorization': 'Bearer ' + token
+                            }
+                        });
+                    }
+                    if (!res || !res.ok) {
+                        res = await fetch('/api/chat/session/summary/latest', {
+                            headers: {
+                                'Authorization': 'Bearer ' + token
+                            }
+                        });
+                    }
                     if (!res.ok) 
                         return;
                     const data = await res.json();
