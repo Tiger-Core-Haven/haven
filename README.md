@@ -1,4 +1,11 @@
 # Haven — AI‑Guided Group Matching for Mental Wellness
+# haven.mathengeinc.com
+
+## 🎥 Demo + Presentation
+- [Client demo video](https://drive.google.com/file/d/12ok1UGJ40jl6IZLkbWRn8BeLjnhu7Hl6/view?usp=sharing)
+- [Presentation (PDF)](https://drive.google.com/file/d/1CrR1t1HrqowSkskrR6Es4P3RNedIlv17/view?usp=sharing)
+
+
 
 ![Haven Logo](https://img.shields.io/badge/Haven-Mental%20Wellness-9f7aea)
 ![License](https://img.shields.io/badge/license-MIT-blue)
