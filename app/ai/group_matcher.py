@@ -1,18 +1,21 @@
 import os
 import json
-import time
+import logging
 from datetime import datetime, timedelta
+from typing import List, Literal, Optional, Dict, Any
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
-from typing import List, Literal, Optional
 from app.ai.selected_model import SELECTED_MODEL
 
 # --- Configuration ---
-# Make sure to set GOOGLE_API_KEY in your .env
 api_key = os.getenv("GOOGLE_API_KEY", "").strip()
 client = genai.Client(api_key=api_key)
 MODEL_NAME = SELECTED_MODEL
+
+logger = logging.getLogger(__name__)
+
+# --- Pydantic Models ---
 
 class InsightCard(BaseModel):
     selected_group_id: Literal['navigators', 'anchors', 'mirrors', 'balancers', 'explorers'] = Field(
@@ -31,52 +34,45 @@ class GroupThemeAnalysis(BaseModel):
 
 class GroupMatcher:
     ARCHETYPE_GROUPS = {
-    'navigators': {
-        'name': 'The Navigators',
-        'description': 'High-performers dealing with career stress & imposter syndrome.',
-        'focus': 'Career/Academic Stress',
-        'capacity': '6-8 members',
-        'emoji': '🧭'
-    },
-    'anchors': {
-        'name': 'The Anchors',
-        'description': 'Processing grief, loss, or major life transitions.',
-        'focus': 'Grief & Loss',
-        'capacity': '5-7 members',
-        'emoji': '⚓'
-    },
-    'mirrors': {
-        'name': 'The Mirrors',
-        'description': 'Social anxiety, relationship struggles, and self-perception.',
-        'focus': 'Social Anxiety & Relationships',
-        'capacity': '6-8 members',
-        'emoji': '🪞'
-    },
-    'balancers': {
-        'name': 'The Balancers',
-        'description': 'Burnout, exhaustion, and work-life boundaries.',
-        'focus': 'Burnout & Balance',
-        'capacity': '6-8 members',
-        'emoji': '⚖️'
-    },
-    'explorers': {
-        'name': 'The Explorers',
-        'description': 'Identity crisis, self-esteem, and finding purpose.',
-        'focus': 'Identity & Self-Esteem',
-        'capacity': '6-8 members',
-        'emoji': '🌱'
+        'navigators': {
+            'name': 'The Navigators',
+            'description': 'High-performers dealing with career stress & imposter syndrome.',
+            'focus': 'Career/Academic Stress',
+            'capacity': '6-8 members',
+            'emoji': '🧭'
+        },
+        'anchors': {
+            'name': 'The Anchors',
+            'description': 'Processing grief, loss, or major life transitions.',
+            'focus': 'Grief & Loss',
+            'capacity': '5-7 members',
+            'emoji': '⚓'
+        },
+        'mirrors': {
+            'name': 'The Mirrors',
+            'description': 'Social anxiety, relationship struggles, and self-perception.',
+            'focus': 'Social Anxiety & Relationships',
+            'capacity': '6-8 members',
+            'emoji': '🪞'
+        },
+        'balancers': {
+            'name': 'The Balancers',
+            'description': 'Burnout, exhaustion, and work-life boundaries.',
+            'focus': 'Burnout & Balance',
+            'capacity': '6-8 members',
+            'emoji': '⚖️'
+        },
+        'explorers': {
+            'name': 'The Explorers',
+            'description': 'Identity crisis, self-esteem, and finding purpose.',
+            'focus': 'Identity & Self-Esteem',
+            'capacity': '6-8 members',
+            'emoji': '🌱'
+        }
     }
-}
 
     @staticmethod
-    def match_to_group(user_data):
-        """
-        Uses AI to match a user to a group based on their intake data.
-        Returns the group dict AND the generated insight card.
-        """
-        
-        # 1. Construct the Prompt
-        # We dump the ARCHETYPE_GROUPS so the AI knows the options
+    def match_to_group(user_data: Dict[str, Any]):
         prompt = f"""
         You are a Clinical Supervisor matching a new client to a therapy group.
         
@@ -84,10 +80,10 @@ class GroupMatcher:
         {json.dumps(GroupMatcher.ARCHETYPE_GROUPS, indent=2)}
         
         NEW CLIENT PROFILE:
-        - Complaint: {user_data.get('primary_complaint')}
-        - Duration: {user_data.get('duration')}
-        - Severity: {user_data.get('severity')}
-        - Goal: {user_data.get('goal')}
+        - Complaint: {user_data.get('primary_complaint', 'General Stress')}
+        - Duration: {user_data.get('duration', 'Unknown')}
+        - Severity: {user_data.get('severity', 'Moderate')}
+        - Goal: {user_data.get('goal', 'Support')}
         
         TASK:
         1. Analyze the client's profile.
@@ -96,31 +92,22 @@ class GroupMatcher:
         """
 
         try:
-            # 2. Call Gemini
             response = client.models.generate_content(
                 model=MODEL_NAME,
                 contents=prompt,
                 config=types.GenerateContentConfig(
-                    temperature=0.4, # Low temp for consistent matching
+                    temperature=0.4,
                     response_mime_type="application/json",
-                    response_schema=InsightCard.model_json_schema()
+                    response_schema=InsightCard
                 )
             )
-            
-            # 3. Parse Result
-            result = InsightCard.model_validate_json(response.text)
-            
-            # 4. Format Output for Frontend
+            result = response.parsed
             group_id = result.selected_group_id
             group_info = GroupMatcher.ARCHETYPE_GROUPS.get(group_id, GroupMatcher.ARCHETYPE_GROUPS['navigators'])
-            
-            # We return the group info, but we attach the AI-generated insight to it
-            # (or return it separately depending on your route logic)
             return group_info, result
 
         except Exception as e:
-            print(f"GroupMatching Error: {e}")
-            # Fallback to Navigators if AI fails
+            logger.error(f"GroupMatching Error: {e}")
             fallback_insight = InsightCard(
                 selected_group_id='navigators',
                 title="We see you working hard",
@@ -128,35 +115,27 @@ class GroupMatcher:
             )
             return GroupMatcher.ARCHETYPE_GROUPS['navigators'], fallback_insight
 
-    @staticmethod
-    def generate_insight_card(user_data, group):
-        # NOTE: In the new logic, `match_to_group` generates the insight already.
-        # This function exists to maintain backward compatibility with your route.
-        # If `group` passed here is just the dict, we might need to re-generate or just pass-through.
-        
-        # Ideally, update your route to unpack the tuple returned by `match_to_group`
-        pass 
-
 
 class TherapistHandoff:
     @staticmethod
-    def generate_group_brief(group_def, participants):
+    def generate_group_brief(group_def: Dict[str, Any], participants: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Analyzes a list of participants and generates a clinical briefing for the therapist.
+        Generates JSON data for the dashboard visualizer.
         """
-        
+        clean_participants = []
+        for p in participants:
+            clean_participants.append({
+                "concern": p.get('primary_concern'),
+                "severity": p.get('severity'),
+                "stressors": p.get('stressors'),
+                "goals": p.get('conversation_summary')
+            })
+
         prompt = f"""
-        You are a Lead Therapist preparing a briefing document for an upcoming group session.
-        
-        GROUP CONTEXT:
-        Name: {group_def.get('name')}
-        Focus: {group_def.get('focus')}
-        
-        PARTICIPANTS:
-        {json.dumps(participants, indent=2)}
-        
-        TASK:
-        Analyze the participants to determine the collective mood, common themes, and clinical focus.
+        You are a Lead Therapist preparing a dashboard summary.
+        GROUP: {group_def.get('name')}
+        PARTICIPANTS: {json.dumps(clean_participants)}
+        TASK: JSON output for mood, themes, and focus.
         """
 
         try:
@@ -164,35 +143,66 @@ class TherapistHandoff:
                 model=MODEL_NAME,
                 contents=prompt,
                 config=types.GenerateContentConfig(
-                    temperature=0.7, # Higher temp for creativity in suggestions
+                    temperature=0.7, 
                     response_mime_type="application/json",
-                    response_schema=GroupThemeAnalysis.model_json_schema()
+                    response_schema=GroupThemeAnalysis
                 )
             )
-            
-            analysis = GroupThemeAnalysis.model_validate_json(response.text)
-            
-            # Combine hard data with AI analysis
+            return response.parsed.model_dump()
+        except Exception:
+            # Simple fallback
             return {
-                'group_name': group_def.get('name'),
-                'focus_area': group_def.get('focus'),
-                'session_date': (datetime.now() + timedelta(days=2)).strftime('%A, %B %d, %Y'),
-                'session_time': '6:00 PM',
-                'participant_count': len(participants),
-                
-                # AI Generated Fields
-                'group_themes': analysis.group_themes,
-                'collective_mood': analysis.collective_mood,
-                'recommended_focus': analysis.recommended_focus,
-                'icebreaker': analysis.icebreaker_suggestion,
-                
-                'participants': participants
+                'group_themes': ['Stress', 'Anxiety'],
+                'collective_mood': 'Mixed',
+                'recommended_focus': ['Introductions'],
+                'icebreaker_suggestion': 'How are you?'
             }
 
+    @staticmethod
+    def generate_detailed_handoff_report(group_def: Dict[str, Any], participants: List[Dict[str, Any]]) -> str:
+        """
+        Generates a long-form text report suitable for a PDF download.
+        """
+        # Prepare detailed context
+        context_str = ""
+        for p in participants:
+            context_str += f"- Participant: {p.get('name', 'Anonymous')}\n"
+            context_str += f"  - Complaint: {p.get('primary_concern')}\n"
+            context_str += f"  - Stressors: {', '.join(p.get('stressors', []))}\n"
+            context_str += f"  - Goals: {p.get('conversation_summary')}\n"
+            context_str += f"  - Mood Level: {p.get('mood_level')}/100\n\n"
+
+        prompt = f"""
+        You are a Clinical Supervisor. Write a formal "Group Session Briefing Document" for a therapist who is about to lead this group.
+        
+        GROUP DETAILS:
+        Name: {group_def.get('name')}
+        Focus: {group_def.get('focus')}
+        Target Population: {group_def.get('description')}
+        
+        PARTICIPANT INSIGHTS:
+        {context_str}
+        
+        TASK:
+        Write a structured report (plain text, no markdown **) that includes:
+        1. Executive Summary (The overall "vibe" and clinical urgency of the group).
+        2. Key Themes (3-4 psychological threads tying these people together).
+        3. Participant Snapshots (Brief 1-sentence clinical note on each person).
+        4. Proposed Session Structure (Icebreaker, Core Activity, Closing).
+        5. Risk Factors (Any severity flags to watch out for).
+        
+        Make it professional, empathetic, and actionable.
+        """
+
+        try:
+            response = client.models.generate_content(
+                model=MODEL_NAME,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.5,
+                    response_mime_type="text/plain" 
+                )
+            )
+            return response.text
         except Exception as e:
-            print(f"Handoff Error: {e}")
-            return {
-                'group_name': group_def.get('name'),
-                'error': "Could not generate AI brief",
-                'participants': participants
-            }
+            return f"Error generating report: {str(e)}"

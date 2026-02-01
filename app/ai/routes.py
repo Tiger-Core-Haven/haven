@@ -1,11 +1,13 @@
 import os
+import io
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
-from flask import request, jsonify, g, Response
+from flask import request, jsonify, g, Response, send_file
 from google.cloud import firestore
+from fpdf import FPDF  # Requires: pip install fpdf
+
 from app.auth.utils import token_required
 from app.models import User, ChatSession
-
 from app.ai.chat_engine import ChatbotEngine 
 from app.ai.group_matcher import GroupMatcher, TherapistHandoff
 from app.extensions import db
@@ -501,15 +503,85 @@ def therapist_dashboard(group_id):
     })
     return jsonify(brief)
 
+class PDFReport(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 15)
+        self.cell(0, 10, 'Haven | Therapist Session Briefing', 0, 1, 'C')
+        self.ln(5)
+
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+
+    def chapter_body(self, body):
+        self.set_font('Arial', '', 11)
+        # Fix encoding issues by replacing common non-latin chars if necessary
+        clean_body = body.encode('latin-1', 'replace').decode('latin-1')
+        self.multi_cell(0, 7, clean_body)
+        self.ln()
+
 @ai_bp.route('/therapist/download-brief/<group_id>', methods=['GET'])
 @token_required
 def download_brief(group_id):
     user = User.get_by_id(g.user_uid)
     if not user or user.role != 'therapist':
         return jsonify({'error': 'Forbidden'}), 403
-    # This would generate the PDF using a library like WeasyPrint or ReportLab
-    return jsonify({
-        'status': 'success',
-        'message': 'PDF generation would happen here',
-        'url': f'/downloads/brief_{group_id}.pdf'
-    })
+
+    # 1. Fetch Group Data (Same logic as dashboard)
+    sessions_query = db.collection('sessions').where('matched_group_id', '==', group_id).stream()
+    participants = []
+    
+    for doc in sessions_query:
+        data = doc.to_dict()
+        user_obj = User.get_by_id(data.get('user_id')) if data.get('user_id') else None
+        extracted = data.get('extracted_data', {}) or {}
+        
+        participants.append({
+            'name': getattr(user_obj, 'display_name', None) or (user_obj.email.split("@")[0] if user_obj else "Member"),
+            'primary_concern': extracted.get('primary_complaint') or 'General wellness',
+            'stressors': data.get('stressors', []),
+            'mood_level': data.get('mood_level'),
+            'conversation_summary': extracted.get('goal') or 'No specific goal set',
+            'severity': extracted.get('severity') or 'Moderate'
+        })
+
+    # 2. Get Group Definitions
+    group_def = GroupMatcher.ARCHETYPE_GROUPS.get(group_id, GroupMatcher.ARCHETYPE_GROUPS.get('navigators'))
+    
+    # 3. Generate Content using AI
+    # We pass the aggregated participant insights to the AI
+    report_text = TherapistHandoff.generate_detailed_handoff_report(group_def, participants)
+
+    # 4. Generate PDF
+    pdf = PDFReport()
+    pdf.add_page()
+    
+    # Title Section
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, f"Group: {group_def.get('name')}", 0, 1, 'L')
+    pdf.set_font('Arial', 'I', 12)
+    pdf.cell(0, 10, f"Focus: {group_def.get('focus')}", 0, 1, 'L')
+    pdf.line(10, 35, 200, 35)
+    pdf.ln(10)
+    
+    # AI Content
+    pdf.chapter_body(report_text)
+    
+    # Output to buffer
+    buffer = io.BytesIO()
+    # fpdf's output() returns a string in older versions, or accepts a 'dest' in newer.
+    # The robust way for Flask with recent fpdf2:
+    pdf_bytes = pdf.output(dest='S').encode('latin-1') 
+    buffer.write(pdf_bytes)
+    buffer.seek(0)
+
+    # 5. Send File
+    filename = f"Haven_Brief_{group_id}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/pdf'
+    )
