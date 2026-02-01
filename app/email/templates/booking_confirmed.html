@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 style="margin: 0 0 10px 0; font-size: 28px;">you're booked.</h1>
-<p style="margin: 0 0 16px 0;">your session is confirmed. we've saved your spot and will send reminders as it gets closer.</p>
+<h1 style="margin: 0 0 10px 0; font-size: 28px;">You're booked.</h1>
+<p style="margin: 0 0 16px 0;">Your session is confirmed. we've saved your spot and will send reminders as it gets closer.</p>
 <div style="margin: 10px 0 18px 0; padding: 18px; border-radius: 14px; background: #f6f8ff;">
   <div style="font-weight: 700; font-size: 18px;">{{ group_name }}</div>
   {% if session_time %}
@@ -22,8 +22,8 @@
 <div class="divider"></div>
 {% if calendar_url %}
   <div style="margin: 8px 0 0 0;">
-    <a class="cta" href="{{ calendar_url }}">add to calendar</a>
+    <a class="cta" href="{{ calendar_url }}">Add to calendar</a>
   </div>
 {% endif %}
-<div class="subtle">if you need to reschedule, just reply and we'll help.</div>
+<div class="subtle">If you need to reschedule, just reply and we'll help.</div>
 {% endblock %}

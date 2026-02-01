@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 style="margin: 0 0 10px 0; font-size: 28px;">welcome to {{ app_name }}.</h1>
-<p style="margin: 0 0 16px 0;">hi {{ display_name }}, i'm really glad you're here. this is a calm space to slow down and sort through what you're carrying.</p>
-<p style="margin: 0 0 16px 0;">when you're ready, you can continue your journey and meet people who genuinely get it.</p>
+<h1 style="margin: 0 0 10px 0; font-size: 28px;">Welcome to {{ app_name }}.</h1>
+<p style="margin: 0 0 16px 0;">Hi {{ display_name }}, I'm really glad you're here. this is a calm space to slow down and sort through what you're carrying.</p>
+<p style="margin: 0 0 16px 0;">When you're ready, you can continue your journey and meet people who genuinely get it.</p>
 {% if cta_url %}
   <a class="cta" href="{{ cta_url }}">{{ cta_label }}</a>
 {% endif %}
 <div class="divider"></div>
-<div class="subtle">you can reply to this email if you ever need a hand.</div>
+<div class="subtle">You can reply to this email if you ever need a hand.</div>
 {% endblock %}

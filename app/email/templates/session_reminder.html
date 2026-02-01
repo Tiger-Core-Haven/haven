@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-<h1 style="margin: 0 0 10px 0; font-size: 28px;">your session is coming up.</h1>
-<p style="margin: 0 0 16px 0;">a gentle reminder that your {{ group_name }} session is scheduled soon.</p>
+<h1 style="margin: 0 0 10px 0; font-size: 28px;">Your session is coming up.</h1>
+<p style="margin: 0 0 16px 0;">A gentle reminder that your {{ group_name }} session is scheduled soon.</p>
 <div style="margin: 10px 0 18px 0; padding: 18px; border-radius: 14px; background: #f6f8ff;">
   <div style="font-weight: 700; font-size: 18px;">{{ session_date }}</div>
   <div class="subtle" style="margin-top: 6px;">{{ session_time }}</div>
   {% if join_url %}
-    <div class="subtle" style="margin-top: 6px;">join link: {{ join_url }}</div>
+    <div class="subtle" style="margin-top: 6px;">Join link: {{ join_url }}</div>
   {% endif %}
 </div>
 {% if cta_url %}
